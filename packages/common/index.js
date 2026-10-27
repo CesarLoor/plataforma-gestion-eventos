@@ -62,7 +62,8 @@ export async function iniciar(app, alCerrar = async () => {}) {
 
 // ---------- Base de datos ----------
 
-export const crearDb = () => new pg.Pool({ connectionString: env('DATABASE_URL'), max: Number(env('DB_POOL', 10)) });
+// idleTimeoutMillis 0: las conexiones quedan abiertas; reabrirlas en cada pico cuesta un handshake SCRAM por conexión
+export const crearDb = () => new pg.Pool({ connectionString: env('DATABASE_URL'), max: Number(env('DB_POOL', 10)), idleTimeoutMillis: 0 });
 
 const ESQUEMA_COMUN = `
 CREATE TABLE IF NOT EXISTS outbox (
