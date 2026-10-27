@@ -3,17 +3,33 @@
 {{ $tls := "{}" }}{{ if ne (env "DOMAIN") "localhost" }}{{ $tls = "{ certResolver: le }" }}{{ end }}
 http:
   routers:
+    # HTTP (puerto 80) y cualquier acceso por IP u otro nombre: redirige al dominio con HTTPS
+    a-dominio-http:
+      rule: 'PathPrefix(`/`)'
+      priority: 1
+      entryPoints: [web]
+      service: pwa
+      middlewares: [a-dominio]
+    a-dominio-https:
+      rule: 'PathPrefix(`/`)'
+      priority: 1
+      entryPoints: [websecure]
+      service: pwa
+      middlewares: [a-dominio]
+      tls: {}
     pwa:
       rule: 'Host(`{{ env "DOMAIN" }}`)'
-      priority: 1
+      priority: 10
       service: pwa
       middlewares: [seguridad]
       tls: {{ $tls }}
+      entryPoints: [websecure]
     pasarela:
       rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/pasarela`)'
       service: payment-sim
       middlewares: [seguridad, sin-pasarela]
       tls: {{ $tls }}
+      entryPoints: [websecure]
     # Las rutas /internal/* son solo para la red de Docker: desde afuera responden 403
     internas:
       rule: 'Host(`{{ env "DOMAIN" }}`) && PathRegexp(`^/api/[^/]+/internal(/|$)`)'
@@ -21,18 +37,21 @@ http:
       service: pwa
       middlewares: [bloquear]
       tls: {{ $tls }}
+      entryPoints: [websecure]
     login:
       rule: 'Host(`{{ env "DOMAIN" }}`) && (Path(`/api/auth/login`) || Path(`/api/auth/register`))'
       priority: 500
       service: auth
       middlewares: [limite-login, seguridad, sin-prefijo]
       tls: {{ $tls }}
+      entryPoints: [websecure]
     reservas:
       rule: 'Host(`{{ env "DOMAIN" }}`) && Path(`/api/inventory/reservations`)'
       priority: 500
       service: inventory
       middlewares: [limite-reservas, seguridad, sin-prefijo]
       tls: {{ $tls }}
+      entryPoints: [websecure]
 {{ range $s := list "auth" "catalog" "inventory" "orders" "tickets" "checkin" "reports" }}
     api-{{ $s }}:
       rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api/{{ $s }}`)'
@@ -40,8 +59,13 @@ http:
       service: {{ $s }}
       middlewares: [limite-api, seguridad, sin-prefijo]
       tls: {{ $tls }}
+      entryPoints: [websecure]
 {{ end }}
   middlewares:
+    a-dominio:
+      redirectRegex:
+        regex: '^https?://[^/]+/?(.*)'
+        replacement: 'https://{{ env "DOMAIN" }}/${1}'
     sin-prefijo:
       stripPrefixRegex:
         regex: ['^/api/[^/]+']
