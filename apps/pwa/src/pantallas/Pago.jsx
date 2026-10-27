@@ -52,8 +52,8 @@ export default function Pago({ reservaId, usuario }) {
   const entradas = lineas.reduce((s, l) => s + l.cantidad, 0);
 
   return (
-    <>
-      <div className="pantalla" style={{ paddingTop: 24, paddingBottom: 200 }}>
+    <div className="detalle-cuerpo">
+      <div className="pantalla con-pie" style={{ paddingTop: 24 }}>
         <div className="cabecera" style={{ justifyContent: 'flex-start' }}>
           <Volver a={`evento/${evento.id}`} etiqueta="Volver al evento" />
           <h1 className="titulo" style={{ fontSize: 24 }}>Confirma tu compra</h1>
@@ -114,6 +114,6 @@ export default function Pago({ reservaId, usuario }) {
         </div>
         <button className="boton" form="form-pago" disabled={vencida || enviando}>{enviando ? 'Abriendo la pasarela…' : 'Ir a pagar'}</button>
       </div>
-    </>
+    </div>
   );
 }

@@ -47,6 +47,7 @@ export default function Catalogo() {
       {error && <Alerta>{error}</Alerta>}
       {!eventos && !error && <p className="cargando">Cargando eventos…</p>}
       {eventos?.length === 0 && <p className="vacio">No hay eventos con esos filtros.</p>}
+      <div className="rejilla">
       {eventos?.map((e) => {
         const c = cupos[e.id];
         const agotado = c && c.disponible === 0;
@@ -74,6 +75,7 @@ export default function Catalogo() {
           ? <div key={e.id} className="evento" aria-disabled="true">{contenido}</div>
           : <a key={e.id} className="evento" href={`#/evento/${e.id}`}>{contenido}</a>;
       })}
+      </div>
     </div>
   );
 }

@@ -156,6 +156,8 @@ export default function Acceso() {
       )}
       {aviso && <Alerta tipo={aviso[0]}>{aviso[1]}</Alerta>}
 
+      <div className="acceso">
+      <div>
       <div className="camara">
         {camara ? <video ref={video} muted playsInline aria-label="Vista de la cámara" /> : (
           <button className="boton" onClick={() => { setAviso(null); setCamara(true); }}><Icono nombre="escaner" />Abrir cámara</button>
@@ -183,7 +185,9 @@ export default function Acceso() {
           <button className="boton contorno" style={{ minHeight: 48 }}>Validar</button>
         </div>
       </form>
+      </div>
 
+      <div>
       <div className="kpis">
         <div className="kpi"><span>Ingresos</span><strong>{local ? ingresosLocales : resumen?.ingresos ?? '—'}<small>{!local && resumen ? ` / ${resumen.emitidos}` : ''}</small></strong></div>
         <div className="kpi"><span>Por sincronizar</span><strong style={{ color: cola.length ? 'var(--ambar-texto)' : undefined }}>{cola.length}</strong></div>
@@ -203,6 +207,8 @@ export default function Acceso() {
         <span>Simular sin conexión (para la demostración)</span>
       </label>
       <Sello lineas={[['escudo', 'Sin internet se valida la firma con la lista guardada del evento. Al volver la conexión se sincroniza y se marcan los duplicados.']]} />
+      </div>
+      </div>
     </div>
   );
 }

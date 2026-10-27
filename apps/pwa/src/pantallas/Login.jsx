@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { entrar } from '../api.js';
-import { Alerta, Icono, Sello, ir } from '../comunes.jsx';
+import { Alerta, Icono, ir } from '../comunes.jsx';
 
 const INICIO = { ASISTENTE: 'catalogo', ORGANIZADOR: 'panel', ACCESO: 'acceso', ADMIN: 'panel' };
 
@@ -27,6 +27,17 @@ export default function Login() {
   }
 
   return (
+    <div className="login">
+    <aside className="login-lado">
+      <div className="marca"><span className="marca-icono" style={{ background: '#fff', color: 'var(--acento-oscuro)' }}><Icono nombre="ticket" tam={22} /></span>Aforo</div>
+      <h2>Entradas para eventos locales, sin sobreventa ni copias.</h2>
+      <p>Publica tu evento, vende con cupos al momento y controla el ingreso desde el celular, incluso sin internet.</p>
+      <ul>
+        <li><Icono nombre="ok" />Cupos apartados 10 minutos mientras pagas</li>
+        <li><Icono nombre="ok" />Tickets con QR firmado de un solo uso</li>
+        <li><Icono nombre="ok" />Panel de ventas e ingresos en vivo</li>
+      </ul>
+    </aside>
     <div className="pantalla" style={{ paddingTop: 48, paddingBottom: 32 }}>
       <div className="marca"><span className="marca-icono"><Icono nombre="ticket" tam={22} /></span>Aforo</div>
       <div>
@@ -65,10 +76,7 @@ export default function Login() {
           {registro ? 'Ya tengo cuenta' : 'Crear cuenta'}
         </button>
       </form>
-      <Sello titulo="Tu cuenta está protegida" lineas={[
-        ['candado', 'Conexión cifrada (HTTPS). Tu contraseña se guarda solo como hash.'],
-        ['reloj', 'La sesión vence sola. Tras 5 intentos fallidos la cuenta se bloquea 15 minutos.'],
-      ]} />
+    </div>
     </div>
   );
 }

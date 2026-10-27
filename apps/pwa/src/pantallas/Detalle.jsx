@@ -53,11 +53,12 @@ export default function Detalle({ id, usuario }) {
   const cancelado = evento.estado === 'CANCELADO';
   return (
     <>
-      <div className={`banda ${evento.categoria}`} style={{ height: 168, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', padding: 20 }}>
+      <div className={`banda portada ${evento.categoria}`} style={{ height: 168, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'space-between', padding: 20 }}>
         <Volver a="catalogo" etiqueta="Volver al catálogo" />
         <span>{evento.categoria} · Organiza {evento.organizador}</span>
       </div>
-      <div className="pantalla" style={{ paddingTop: 18, paddingBottom: 230 }}>
+      <div className="detalle-cuerpo">
+      <div className="pantalla con-pie" style={{ paddingTop: 18 }}>
         <div>
           <h1 className="titulo" style={{ fontSize: 26 }}>{evento.titulo}</h1>
           <p className="sub" style={{ fontSize: 14 }}>{new Date(evento.fecha).toLocaleString('es-EC', { timeZone: 'America/Guayaquil', dateStyle: 'full', timeStyle: 'short' })}</p>
@@ -106,6 +107,7 @@ export default function Detalle({ id, usuario }) {
           <span className="total">{dinero(subtotal - rebaja)}</span>
         </div>
         <button className="boton" disabled={!entradas || reservando || cancelado} onClick={reservar}>{reservando ? 'Reservando…' : 'Reservar y pagar'}</button>
+      </div>
       </div>
     </>
   );

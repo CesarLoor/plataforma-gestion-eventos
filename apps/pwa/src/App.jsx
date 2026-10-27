@@ -49,12 +49,12 @@ export default function App() {
 
   return (
     <main className="app">
+      {pantalla !== 'login' && <Nav rol={usuario?.rol} actual={pantalla} />}
       {bloqueado ? (
         <div className="pantalla"><h1 className="titulo">Sin permiso</h1><p className="sub">Tu rol ({usuario.rol}) no puede abrir esta pantalla.</p></div>
       ) : requiere && !usuario ? null : (
         vistas[pantalla] ?? <Catalogo />
       )}
-      {pantalla !== 'login' && <Nav rol={usuario?.rol} actual={pantalla} />}
     </main>
   );
 }

@@ -69,7 +69,7 @@ export default function Tickets({ usuario }) {
       {sinConexion && <Alerta tipo="info">Estás viendo los tickets guardados en este teléfono.{!usuario && ' Inicia sesión para actualizarlos.'}</Alerta>}
       {tickets === null && <p className="cargando">Cargando…</p>}
       {tickets?.length === 0 && <p className="vacio">Aún no tienes tickets. <a href="#/catalogo">Explora eventos</a></p>}
-      {tickets?.map((t, i) => <Ticket key={t.id} t={t} n={i + 1} total={tickets.length} />)}
+      <div className="rejilla dos">{tickets?.map((t, i) => <Ticket key={t.id} t={t} n={i + 1} total={tickets.length} />)}</div>
       <Sello suave lineas={[
         ['escudo', 'QR firmado digitalmente. Un QR alterado o inventado se rechaza en la puerta.'],
         ['alerta', 'Un solo ingreso: no compartas capturas, quien entra primero usa el ticket.'],

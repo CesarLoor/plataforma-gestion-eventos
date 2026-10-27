@@ -94,6 +94,7 @@ const MENUS = {
 
 export const Nav = ({ rol, actual }) => (
   <nav className="nav" aria-label="Navegación principal">
+    <a href="#/catalogo" className="nav-marca" aria-label="Aforo, inicio"><span className="marca-icono"><Icono nombre="ticket" tam={20} /></span>Aforo</a>
     {(MENUS[rol] ?? MENUS.INVITADO).map(([ruta, icono, texto]) => (
       <a key={ruta} href={`#/${ruta}`} aria-current={actual === ruta ? 'page' : undefined}>
         <Icono nombre={icono} tam={22} />
