@@ -1,0 +1,344 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="p00_Definiciones" targetNamespace="http://gestion-eventos.local/bpmn/p00">
+  <bpmn:message id="p00_Msg_Cobro" name="Solicitud de cobro"/>
+  <bpmn:message id="p00_Msg_Resultado" name="Resultado del pago"/>
+  <bpmn:message id="p00_Msg_Reembolso" name="Solicitud de reembolso"/>
+  <bpmn:message id="p00_Msg_Confirmacion" name="Confirmación de reembolso"/>
+  <bpmn:collaboration id="p00_Colaboracion" name="Macroproceso de gestión de eventos">
+    <bpmn:participant id="p00_Pool_Pasarela" name="Pasarela de pago (externa)" processRef="p00_Proc_Pasarela"/>
+    <bpmn:participant id="p00_Pool_Sistema" name="Sistema de gestión de eventos" processRef="p00_Proc_Macro"/>
+    <bpmn:messageFlow id="p00_MF_Cobro" name="Solicitud de cobro" sourceRef="p00_SP_Compra" targetRef="p00_Pool_Pasarela" messageRef="p00_Msg_Cobro"/>
+    <bpmn:messageFlow id="p00_MF_Resultado" name="Resultado del pago" sourceRef="p00_Pool_Pasarela" targetRef="p00_SP_Compra" messageRef="p00_Msg_Resultado"/>
+    <bpmn:messageFlow id="p00_MF_Reembolso" name="Solicitud de reembolso" sourceRef="p00_SP_Cancelar" targetRef="p00_Pool_Pasarela" messageRef="p00_Msg_Reembolso"/>
+    <bpmn:messageFlow id="p00_MF_Confirmacion" name="Confirmación de reembolso" sourceRef="p00_Pool_Pasarela" targetRef="p00_SP_Cancelar" messageRef="p00_Msg_Confirmacion"/>
+  </bpmn:collaboration>
+  <bpmn:process id="p00_Proc_Pasarela" name="Pasarela de pago (caja negra)" isExecutable="false" processType="None">
+  </bpmn:process>
+  <bpmn:process id="p00_Proc_Macro" name="Macroproceso de gestión de eventos" isExecutable="false" processType="None">
+    <bpmn:laneSet id="p00_LaneSet_Proc_Macro">
+      <bpmn:lane id="p00_Lane_Organizador" name="Organizador">
+        <bpmn:flowNodeRef>p00_Inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_SP_RegistroOrg</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_SP_Publicar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Gw_Publicado</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Fin_Borrador</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="p00_Lane_Asistente" name="Asistente">
+        <bpmn:flowNodeRef>p00_SP_RegistroAsis</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_SP_Compra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Gw_Compra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Fin_SinCompra</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Gw_Cancela</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_SP_Cancelar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Gw_Reembolso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Fin_Reembolsado</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="p00_Lane_Acceso" name="Personal de acceso">
+        <bpmn:flowNodeRef>p00_Gw_UnirAcceso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_SP_Acceso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Gw_Ingreso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Fin_Ingreso</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p00_Fin_Denegado</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="p00_Inicio" name="Organizador decide realizar un evento">
+      <bpmn:outgoing>p00_F01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:subProcess id="p00_SP_RegistroOrg" name="Registro y autenticación del organizador">
+      <bpmn:documentation>Detalle del subproceso en 01-registro-y-autenticacion.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F01</bpmn:incoming>
+      <bpmn:outgoing>p00_F02</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="p00_SP_Publicar" name="Publicar evento">
+      <bpmn:documentation>Detalle del subproceso en 02-publicar-evento.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F02</bpmn:incoming>
+      <bpmn:outgoing>p00_F03</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="p00_Gw_Publicado" name="¿Evento publicado?" gatewayDirection="Diverging">
+      <bpmn:incoming>p00_F03</bpmn:incoming>
+      <bpmn:outgoing>p00_F04</bpmn:outgoing>
+      <bpmn:outgoing>p00_F05</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="p00_Fin_Borrador" name="Evento en borrador">
+      <bpmn:incoming>p00_F04</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:subProcess id="p00_SP_RegistroAsis" name="Registro y autenticación del asistente">
+      <bpmn:documentation>Detalle del subproceso en 01-registro-y-autenticacion.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F05</bpmn:incoming>
+      <bpmn:outgoing>p00_F06</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:subProcess id="p00_SP_Compra" name="Reserva y compra de entrada">
+      <bpmn:documentation>Detalle del subproceso en 03-reserva-y-compra-de-entrada.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F06</bpmn:incoming>
+      <bpmn:outgoing>p00_F07</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="p00_Gw_Compra" name="¿Compra completada?" gatewayDirection="Diverging">
+      <bpmn:incoming>p00_F07</bpmn:incoming>
+      <bpmn:outgoing>p00_F08</bpmn:outgoing>
+      <bpmn:outgoing>p00_F09</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="p00_Fin_SinCompra" name="Compra no realizada">
+      <bpmn:incoming>p00_F08</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="p00_Gw_Cancela" name="¿Solicita cancelación?" gatewayDirection="Diverging">
+      <bpmn:incoming>p00_F09</bpmn:incoming>
+      <bpmn:outgoing>p00_F10</bpmn:outgoing>
+      <bpmn:outgoing>p00_F11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="p00_SP_Cancelar" name="Cancelación y reembolso">
+      <bpmn:documentation>Detalle del subproceso en 04-cancelacion-y-reembolso.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F10</bpmn:incoming>
+      <bpmn:outgoing>p00_F12</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="p00_Gw_Reembolso" name="¿Reembolso aprobado?" gatewayDirection="Diverging">
+      <bpmn:incoming>p00_F12</bpmn:incoming>
+      <bpmn:outgoing>p00_F13</bpmn:outgoing>
+      <bpmn:outgoing>p00_F14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="p00_Fin_Reembolsado" name="Entrada cancelada y reembolsada">
+      <bpmn:incoming>p00_F13</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:exclusiveGateway id="p00_Gw_UnirAcceso" gatewayDirection="Converging">
+      <bpmn:incoming>p00_F11</bpmn:incoming>
+      <bpmn:incoming>p00_F14</bpmn:incoming>
+      <bpmn:outgoing>p00_F15</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="p00_SP_Acceso" name="Control de acceso (check-in)">
+      <bpmn:documentation>Detalle del subproceso en 05-control-de-acceso-checkin.bpmn.</bpmn:documentation>
+      <bpmn:incoming>p00_F15</bpmn:incoming>
+      <bpmn:outgoing>p00_F16</bpmn:outgoing>
+    </bpmn:subProcess>
+    <bpmn:exclusiveGateway id="p00_Gw_Ingreso" name="¿Ingreso permitido?" gatewayDirection="Diverging">
+      <bpmn:incoming>p00_F16</bpmn:incoming>
+      <bpmn:outgoing>p00_F17</bpmn:outgoing>
+      <bpmn:outgoing>p00_F18</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="p00_Fin_Ingreso" name="Asistente dentro del evento">
+      <bpmn:incoming>p00_F17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="p00_Fin_Denegado" name="Ingreso denegado">
+      <bpmn:incoming>p00_F18</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="p00_F01" sourceRef="p00_Inicio" targetRef="p00_SP_RegistroOrg"/>
+    <bpmn:sequenceFlow id="p00_F02" sourceRef="p00_SP_RegistroOrg" targetRef="p00_SP_Publicar"/>
+    <bpmn:sequenceFlow id="p00_F03" sourceRef="p00_SP_Publicar" targetRef="p00_Gw_Publicado"/>
+    <bpmn:sequenceFlow id="p00_F04" name="No" sourceRef="p00_Gw_Publicado" targetRef="p00_Fin_Borrador"/>
+    <bpmn:sequenceFlow id="p00_F05" name="Sí" sourceRef="p00_Gw_Publicado" targetRef="p00_SP_RegistroAsis"/>
+    <bpmn:sequenceFlow id="p00_F06" sourceRef="p00_SP_RegistroAsis" targetRef="p00_SP_Compra"/>
+    <bpmn:sequenceFlow id="p00_F07" sourceRef="p00_SP_Compra" targetRef="p00_Gw_Compra"/>
+    <bpmn:sequenceFlow id="p00_F08" name="No" sourceRef="p00_Gw_Compra" targetRef="p00_Fin_SinCompra"/>
+    <bpmn:sequenceFlow id="p00_F09" name="Sí" sourceRef="p00_Gw_Compra" targetRef="p00_Gw_Cancela"/>
+    <bpmn:sequenceFlow id="p00_F10" name="Sí" sourceRef="p00_Gw_Cancela" targetRef="p00_SP_Cancelar"/>
+    <bpmn:sequenceFlow id="p00_F11" name="No" sourceRef="p00_Gw_Cancela" targetRef="p00_Gw_UnirAcceso"/>
+    <bpmn:sequenceFlow id="p00_F12" sourceRef="p00_SP_Cancelar" targetRef="p00_Gw_Reembolso"/>
+    <bpmn:sequenceFlow id="p00_F13" name="Sí" sourceRef="p00_Gw_Reembolso" targetRef="p00_Fin_Reembolsado"/>
+    <bpmn:sequenceFlow id="p00_F14" name="No" sourceRef="p00_Gw_Reembolso" targetRef="p00_Gw_UnirAcceso"/>
+    <bpmn:sequenceFlow id="p00_F15" sourceRef="p00_Gw_UnirAcceso" targetRef="p00_SP_Acceso"/>
+    <bpmn:sequenceFlow id="p00_F16" sourceRef="p00_SP_Acceso" targetRef="p00_Gw_Ingreso"/>
+    <bpmn:sequenceFlow id="p00_F17" name="Sí" sourceRef="p00_Gw_Ingreso" targetRef="p00_Fin_Ingreso"/>
+    <bpmn:sequenceFlow id="p00_F18" name="No" sourceRef="p00_Gw_Ingreso" targetRef="p00_Fin_Denegado"/>
+    <bpmn:textAnnotation id="p00_Nota_Plataforma">
+      <bpmn:text>La Plataforma (sistema) interviene dentro de cada subproceso; el detalle está en los archivos 01 a 05.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="p00_Asoc_Nota_Plataforma" associationDirection="None" sourceRef="p00_Nota_Plataforma" targetRef="p00_SP_Publicar"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="p00_Diagrama" name="Macroproceso de gestión de eventos">
+    <bpmndi:BPMNPlane id="p00_Plano" bpmnElement="p00_Colaboracion">
+      <bpmndi:BPMNShape id="p00_Pool_Pasarela_di" bpmnElement="p00_Pool_Pasarela" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="2082" height="90"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Pool_Sistema_di" bpmnElement="p00_Pool_Sistema" isHorizontal="true">
+        <dc:Bounds x="40" y="200" width="2082" height="882"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Lane_Organizador_di" bpmnElement="p00_Lane_Organizador" isHorizontal="true">
+        <dc:Bounds x="70" y="200" width="2052" height="310"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Lane_Asistente_di" bpmnElement="p00_Lane_Asistente" isHorizontal="true">
+        <dc:Bounds x="70" y="510" width="2052" height="286"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Lane_Acceso_di" bpmnElement="p00_Lane_Acceso" isHorizontal="true">
+        <dc:Bounds x="70" y="796" width="2052" height="286"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Inicio_di" bpmnElement="p00_Inicio">
+        <dc:Bounds x="150" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="127" y="304" width="82" height="56"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_RegistroOrg_di" bpmnElement="p00_SP_RegistroOrg" isExpanded="false">
+        <dc:Bounds x="246" y="245" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_Publicar_di" bpmnElement="p00_SP_Publicar" isExpanded="false">
+        <dc:Bounds x="456" y="245" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_Publicado_di" bpmnElement="p00_Gw_Publicado">
+        <dc:Bounds x="666" y="260" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="643" y="226" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Fin_Borrador_di" bpmnElement="p00_Fin_Borrador">
+        <dc:Bounds x="813" y="262" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="790" y="304" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Nota_Plataforma_di" bpmnElement="p00_Nota_Plataforma">
+        <dc:Bounds x="436" y="405" width="170" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_RegistroAsis_di" bpmnElement="p00_SP_RegistroAsis" isExpanded="false">
+        <dc:Bounds x="766" y="681" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_Compra_di" bpmnElement="p00_SP_Compra" isExpanded="false">
+        <dc:Bounds x="956" y="681" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_Compra_di" bpmnElement="p00_Gw_Compra">
+        <dc:Bounds x="1146" y="696" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1123" y="742" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Fin_SinCompra_di" bpmnElement="p00_Fin_SinCompra">
+        <dc:Bounds x="1248" y="555" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1225" y="597" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_Cancela_di" bpmnElement="p00_Gw_Cancela">
+        <dc:Bounds x="1246" y="696" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1223" y="662" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_Cancelar_di" bpmnElement="p00_SP_Cancelar" isExpanded="false">
+        <dc:Bounds x="1346" y="681" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_Reembolso_di" bpmnElement="p00_Gw_Reembolso">
+        <dc:Bounds x="1536" y="696" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1513" y="742" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Fin_Reembolsado_di" bpmnElement="p00_Fin_Reembolsado">
+        <dc:Bounds x="1638" y="555" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1615" y="597" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_UnirAcceso_di" bpmnElement="p00_Gw_UnirAcceso">
+        <dc:Bounds x="1636" y="856" width="40" height="40"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_SP_Acceso_di" bpmnElement="p00_SP_Acceso" isExpanded="false">
+        <dc:Bounds x="1736" y="841" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Gw_Ingreso_di" bpmnElement="p00_Gw_Ingreso">
+        <dc:Bounds x="1926" y="856" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1903" y="822" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Fin_Ingreso_di" bpmnElement="p00_Fin_Ingreso">
+        <dc:Bounds x="2026" y="858" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2003" y="900" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p00_Fin_Denegado_di" bpmnElement="p00_Fin_Denegado">
+        <dc:Bounds x="2026" y="1001" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2003" y="1043" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="p00_F01_di" bpmnElement="p00_F01">
+        <di:waypoint x="186" y="280"/>
+        <di:waypoint x="246" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F02_di" bpmnElement="p00_F02">
+        <di:waypoint x="376" y="280"/>
+        <di:waypoint x="456" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F03_di" bpmnElement="p00_F03">
+        <di:waypoint x="586" y="280"/>
+        <di:waypoint x="666" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F04_di" bpmnElement="p00_F04">
+        <di:waypoint x="706" y="280"/>
+        <di:waypoint x="813" y="280"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="712" y="262" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F05_di" bpmnElement="p00_F05">
+        <di:waypoint x="686" y="300"/>
+        <di:waypoint x="686" y="716"/>
+        <di:waypoint x="766" y="716"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="692" y="304" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F06_di" bpmnElement="p00_F06">
+        <di:waypoint x="896" y="716"/>
+        <di:waypoint x="956" y="716"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F07_di" bpmnElement="p00_F07">
+        <di:waypoint x="1086" y="716"/>
+        <di:waypoint x="1146" y="716"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F08_di" bpmnElement="p00_F08">
+        <di:waypoint x="1166" y="696"/>
+        <di:waypoint x="1166" y="573"/>
+        <di:waypoint x="1248" y="573"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1172" y="678" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F09_di" bpmnElement="p00_F09">
+        <di:waypoint x="1186" y="716"/>
+        <di:waypoint x="1246" y="716"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1192" y="698" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F10_di" bpmnElement="p00_F10">
+        <di:waypoint x="1286" y="716"/>
+        <di:waypoint x="1346" y="716"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1292" y="698" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F11_di" bpmnElement="p00_F11">
+        <di:waypoint x="1266" y="736"/>
+        <di:waypoint x="1266" y="876"/>
+        <di:waypoint x="1636" y="876"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1272" y="740" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F12_di" bpmnElement="p00_F12">
+        <di:waypoint x="1476" y="716"/>
+        <di:waypoint x="1536" y="716"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F13_di" bpmnElement="p00_F13">
+        <di:waypoint x="1556" y="696"/>
+        <di:waypoint x="1556" y="573"/>
+        <di:waypoint x="1638" y="573"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1562" y="678" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F14_di" bpmnElement="p00_F14">
+        <di:waypoint x="1576" y="716"/>
+        <di:waypoint x="1656" y="716"/>
+        <di:waypoint x="1656" y="856"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1582" y="698" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F15_di" bpmnElement="p00_F15">
+        <di:waypoint x="1676" y="876"/>
+        <di:waypoint x="1736" y="876"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F16_di" bpmnElement="p00_F16">
+        <di:waypoint x="1866" y="876"/>
+        <di:waypoint x="1926" y="876"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F17_di" bpmnElement="p00_F17">
+        <di:waypoint x="1966" y="876"/>
+        <di:waypoint x="2026" y="876"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1972" y="858" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_F18_di" bpmnElement="p00_F18">
+        <di:waypoint x="1946" y="896"/>
+        <di:waypoint x="1946" y="1019"/>
+        <di:waypoint x="2026" y="1019"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1952" y="900" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_MF_Cobro_di" bpmnElement="p00_MF_Cobro">
+        <di:waypoint x="996" y="681"/>
+        <di:waypoint x="996" y="130"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="878" y="398" width="110" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_MF_Resultado_di" bpmnElement="p00_MF_Resultado">
+        <di:waypoint x="1046" y="130"/>
+        <di:waypoint x="1046" y="681"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1054" y="398" width="110" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_MF_Reembolso_di" bpmnElement="p00_MF_Reembolso">
+        <di:waypoint x="1386" y="681"/>
+        <di:waypoint x="1386" y="130"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1268" y="391" width="110" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_MF_Confirmacion_di" bpmnElement="p00_MF_Confirmacion">
+        <di:waypoint x="1436" y="130"/>
+        <di:waypoint x="1436" y="681"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1444" y="391" width="110" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p00_Asoc_Nota_Plataforma_di" bpmnElement="p00_Asoc_Nota_Plataforma">
+        <di:waypoint x="521" y="405"/>
+        <di:waypoint x="521" y="315"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

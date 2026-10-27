@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="p05_Definiciones" targetNamespace="http://gestion-eventos.local/bpmn/p05">
+  <bpmn:collaboration id="p05_Colaboracion" name="Control de acceso (check-in)">
+    <bpmn:participant id="p05_Pool_Sistema" name="Sistema de gestión de eventos" processRef="p05_Proc_Checkin"/>
+  </bpmn:collaboration>
+  <bpmn:process id="p05_Proc_Checkin" name="Control de acceso (check-in)" isExecutable="false" processType="None">
+    <bpmn:laneSet id="p05_LaneSet_Proc_Checkin">
+      <bpmn:lane id="p05_Lane_Asistente" name="Asistente">
+        <bpmn:flowNodeRef>p05_Inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_Presentar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_Ingresar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_Fin_Registrado</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="p05_Lane_Acceso" name="Personal de acceso">
+        <bpmn:flowNodeRef>p05_T_Escanear</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_Permitir</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_Denegar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_Fin_Denegado</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="p05_Lane_Plataforma" name="Plataforma (sistema)">
+        <bpmn:flowNodeRef>p05_T_Validar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_Gw_Valido</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_Gw_Usado</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_Marcar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_RegUsado</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_T_RegInvalido</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p05_Gw_UnirRechazo</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="p05_Inicio" name="Asistente llega al punto de acceso">
+      <bpmn:outgoing>p05_F01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:manualTask id="p05_T_Presentar" name="Presentar ticket con código QR">
+      <bpmn:incoming>p05_F01</bpmn:incoming>
+      <bpmn:outgoing>p05_F02</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:userTask id="p05_T_Escanear" name="Escanear código QR del ticket">
+      <bpmn:incoming>p05_F02</bpmn:incoming>
+      <bpmn:outgoing>p05_F03</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="p05_T_Validar" name="Validar ticket">
+      <bpmn:documentation>ms-acceso: verifica firma del QR, evento, fecha y estado del ticket.</bpmn:documentation>
+      <bpmn:incoming>p05_F03</bpmn:incoming>
+      <bpmn:outgoing>p05_F04</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="p05_Gw_Valido" name="¿Ticket válido para este evento?" gatewayDirection="Diverging">
+      <bpmn:incoming>p05_F04</bpmn:incoming>
+      <bpmn:outgoing>p05_F05</bpmn:outgoing>
+      <bpmn:outgoing>p05_F06</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:exclusiveGateway id="p05_Gw_Usado" name="¿Ticket ya utilizado?" gatewayDirection="Diverging">
+      <bpmn:incoming>p05_F05</bpmn:incoming>
+      <bpmn:outgoing>p05_F07</bpmn:outgoing>
+      <bpmn:outgoing>p05_F08</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="p05_T_Marcar" name="Marcar ticket como utilizado">
+      <bpmn:documentation>ms-acceso: actualización atómica (compare-and-set) que garantiza el ingreso único.</bpmn:documentation>
+      <bpmn:incoming>p05_F07</bpmn:incoming>
+      <bpmn:outgoing>p05_F12</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="p05_T_RegUsado" name="Registrar intento con ticket ya utilizado">
+      <bpmn:incoming>p05_F08</bpmn:incoming>
+      <bpmn:outgoing>p05_F09</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="p05_T_RegInvalido" name="Registrar intento con ticket inválido">
+      <bpmn:incoming>p05_F06</bpmn:incoming>
+      <bpmn:outgoing>p05_F10</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="p05_Gw_UnirRechazo" gatewayDirection="Converging">
+      <bpmn:incoming>p05_F09</bpmn:incoming>
+      <bpmn:incoming>p05_F10</bpmn:incoming>
+      <bpmn:outgoing>p05_F11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:manualTask id="p05_T_Permitir" name="Permitir ingreso al recinto">
+      <bpmn:incoming>p05_F12</bpmn:incoming>
+      <bpmn:outgoing>p05_F13</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:manualTask id="p05_T_Denegar" name="Denegar ingreso e informar el motivo">
+      <bpmn:incoming>p05_F11</bpmn:incoming>
+      <bpmn:outgoing>p05_F15</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:endEvent id="p05_Fin_Denegado" name="Ingreso denegado">
+      <bpmn:incoming>p05_F15</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:manualTask id="p05_T_Ingresar" name="Ingresar al evento">
+      <bpmn:incoming>p05_F13</bpmn:incoming>
+      <bpmn:outgoing>p05_F14</bpmn:outgoing>
+    </bpmn:manualTask>
+    <bpmn:endEvent id="p05_Fin_Registrado" name="Ingreso registrado">
+      <bpmn:incoming>p05_F14</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="p05_F01" sourceRef="p05_Inicio" targetRef="p05_T_Presentar"/>
+    <bpmn:sequenceFlow id="p05_F02" sourceRef="p05_T_Presentar" targetRef="p05_T_Escanear"/>
+    <bpmn:sequenceFlow id="p05_F03" sourceRef="p05_T_Escanear" targetRef="p05_T_Validar"/>
+    <bpmn:sequenceFlow id="p05_F04" sourceRef="p05_T_Validar" targetRef="p05_Gw_Valido"/>
+    <bpmn:sequenceFlow id="p05_F05" name="Sí" sourceRef="p05_Gw_Valido" targetRef="p05_Gw_Usado"/>
+    <bpmn:sequenceFlow id="p05_F06" name="No" sourceRef="p05_Gw_Valido" targetRef="p05_T_RegInvalido"/>
+    <bpmn:sequenceFlow id="p05_F07" name="No" sourceRef="p05_Gw_Usado" targetRef="p05_T_Marcar"/>
+    <bpmn:sequenceFlow id="p05_F08" name="Sí" sourceRef="p05_Gw_Usado" targetRef="p05_T_RegUsado"/>
+    <bpmn:sequenceFlow id="p05_F09" sourceRef="p05_T_RegUsado" targetRef="p05_Gw_UnirRechazo"/>
+    <bpmn:sequenceFlow id="p05_F10" sourceRef="p05_T_RegInvalido" targetRef="p05_Gw_UnirRechazo"/>
+    <bpmn:sequenceFlow id="p05_F11" sourceRef="p05_Gw_UnirRechazo" targetRef="p05_T_Denegar"/>
+    <bpmn:sequenceFlow id="p05_F12" sourceRef="p05_T_Marcar" targetRef="p05_T_Permitir"/>
+    <bpmn:sequenceFlow id="p05_F13" sourceRef="p05_T_Permitir" targetRef="p05_T_Ingresar"/>
+    <bpmn:sequenceFlow id="p05_F14" sourceRef="p05_T_Ingresar" targetRef="p05_Fin_Registrado"/>
+    <bpmn:sequenceFlow id="p05_F15" sourceRef="p05_T_Denegar" targetRef="p05_Fin_Denegado"/>
+    <bpmn:textAnnotation id="p05_Nota_Unico">
+      <bpmn:text>Ingreso único: un segundo escaneo del mismo ticket se rechaza.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="p05_Asoc_Nota_Unico" associationDirection="None" sourceRef="p05_Nota_Unico" targetRef="p05_T_Marcar"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="p05_Diagrama" name="Control de acceso (check-in)">
+    <bpmndi:BPMNPlane id="p05_Plano" bpmnElement="p05_Colaboracion">
+      <bpmndi:BPMNShape id="p05_Pool_Sistema_di" bpmnElement="p05_Pool_Sistema" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="1682" height="960"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Lane_Asistente_di" bpmnElement="p05_Lane_Asistente" isHorizontal="true">
+        <dc:Bounds x="70" y="40" width="1652" height="160"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Lane_Acceso_di" bpmnElement="p05_Lane_Acceso" isHorizontal="true">
+        <dc:Bounds x="70" y="200" width="1652" height="320"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Lane_Plataforma_di" bpmnElement="p05_Lane_Plataforma" isHorizontal="true">
+        <dc:Bounds x="70" y="520" width="1652" height="480"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Inicio_di" bpmnElement="p05_Inicio">
+        <dc:Bounds x="150" y="102" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="127" y="144" width="82" height="56"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Presentar_di" bpmnElement="p05_T_Presentar">
+        <dc:Bounds x="246" y="85" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Escanear_di" bpmnElement="p05_T_Escanear">
+        <dc:Bounds x="436" y="245" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Validar_di" bpmnElement="p05_T_Validar">
+        <dc:Bounds x="626" y="565" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Gw_Valido_di" bpmnElement="p05_Gw_Valido">
+        <dc:Bounds x="816" y="580" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="793" y="532" width="86" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Gw_Usado_di" bpmnElement="p05_Gw_Usado">
+        <dc:Bounds x="916" y="580" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="893" y="546" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Marcar_di" bpmnElement="p05_T_Marcar">
+        <dc:Bounds x="1036" y="565" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_RegUsado_di" bpmnElement="p05_T_RegUsado">
+        <dc:Bounds x="1036" y="725" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_RegInvalido_di" bpmnElement="p05_T_RegInvalido">
+        <dc:Bounds x="1036" y="885" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Gw_UnirRechazo_di" bpmnElement="p05_Gw_UnirRechazo">
+        <dc:Bounds x="1291" y="740" width="40" height="40"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Permitir_di" bpmnElement="p05_T_Permitir">
+        <dc:Bounds x="1246" y="245" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Denegar_di" bpmnElement="p05_T_Denegar">
+        <dc:Bounds x="1436" y="405" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Fin_Denegado_di" bpmnElement="p05_Fin_Denegado">
+        <dc:Bounds x="1626" y="422" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1603" y="464" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_T_Ingresar_di" bpmnElement="p05_T_Ingresar">
+        <dc:Bounds x="1436" y="85" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Fin_Registrado_di" bpmnElement="p05_Fin_Registrado">
+        <dc:Bounds x="1626" y="102" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1603" y="144" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p05_Nota_Unico_di" bpmnElement="p05_Nota_Unico">
+        <dc:Bounds x="1016" y="410" width="170" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="p05_F01_di" bpmnElement="p05_F01">
+        <di:waypoint x="186" y="120"/>
+        <di:waypoint x="246" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F02_di" bpmnElement="p05_F02">
+        <di:waypoint x="376" y="120"/>
+        <di:waypoint x="406" y="120"/>
+        <di:waypoint x="406" y="280"/>
+        <di:waypoint x="436" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F03_di" bpmnElement="p05_F03">
+        <di:waypoint x="566" y="280"/>
+        <di:waypoint x="596" y="280"/>
+        <di:waypoint x="596" y="600"/>
+        <di:waypoint x="626" y="600"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F04_di" bpmnElement="p05_F04">
+        <di:waypoint x="756" y="600"/>
+        <di:waypoint x="816" y="600"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F05_di" bpmnElement="p05_F05">
+        <di:waypoint x="856" y="600"/>
+        <di:waypoint x="916" y="600"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="862" y="582" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F06_di" bpmnElement="p05_F06">
+        <di:waypoint x="836" y="620"/>
+        <di:waypoint x="836" y="920"/>
+        <di:waypoint x="1036" y="920"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="842" y="624" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F07_di" bpmnElement="p05_F07">
+        <di:waypoint x="956" y="600"/>
+        <di:waypoint x="1036" y="600"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="962" y="582" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F08_di" bpmnElement="p05_F08">
+        <di:waypoint x="936" y="620"/>
+        <di:waypoint x="936" y="760"/>
+        <di:waypoint x="1036" y="760"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="942" y="624" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F09_di" bpmnElement="p05_F09">
+        <di:waypoint x="1166" y="760"/>
+        <di:waypoint x="1291" y="760"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F10_di" bpmnElement="p05_F10">
+        <di:waypoint x="1166" y="920"/>
+        <di:waypoint x="1311" y="920"/>
+        <di:waypoint x="1311" y="780"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F11_di" bpmnElement="p05_F11">
+        <di:waypoint x="1331" y="760"/>
+        <di:waypoint x="1501" y="760"/>
+        <di:waypoint x="1501" y="475"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F12_di" bpmnElement="p05_F12">
+        <di:waypoint x="1166" y="600"/>
+        <di:waypoint x="1216" y="600"/>
+        <di:waypoint x="1216" y="280"/>
+        <di:waypoint x="1246" y="280"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F13_di" bpmnElement="p05_F13">
+        <di:waypoint x="1376" y="280"/>
+        <di:waypoint x="1406" y="280"/>
+        <di:waypoint x="1406" y="120"/>
+        <di:waypoint x="1436" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F14_di" bpmnElement="p05_F14">
+        <di:waypoint x="1566" y="120"/>
+        <di:waypoint x="1626" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_F15_di" bpmnElement="p05_F15">
+        <di:waypoint x="1566" y="440"/>
+        <di:waypoint x="1626" y="440"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p05_Asoc_Nota_Unico_di" bpmnElement="p05_Asoc_Nota_Unico">
+        <di:waypoint x="1101" y="470"/>
+        <di:waypoint x="1101" y="565"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

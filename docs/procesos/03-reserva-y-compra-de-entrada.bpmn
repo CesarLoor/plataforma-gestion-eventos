@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="p03_Definiciones" targetNamespace="http://gestion-eventos.local/bpmn/p03">
+  <bpmn:message id="p03_Msg_Cobro" name="Solicitud de cobro"/>
+  <bpmn:message id="p03_Msg_Resultado" name="Resultado del pago"/>
+  <bpmn:collaboration id="p03_Colaboracion" name="Reserva y compra de entrada">
+    <bpmn:participant id="p03_Pool_Sistema" name="Sistema de gestión de eventos" processRef="p03_Proc_Compra"/>
+    <bpmn:participant id="p03_Pool_Pasarela" name="Pasarela de pago (externa)" processRef="p03_Proc_Cobro"/>
+    <bpmn:messageFlow id="p03_MF_Cobro" name="Solicitud de cobro" sourceRef="p03_T_SolicitarCobro" targetRef="p03_PG_Inicio" messageRef="p03_Msg_Cobro"/>
+    <bpmn:messageFlow id="p03_MF_Resultado" name="Resultado del pago" sourceRef="p03_PG_Fin" targetRef="p03_Ev_Respuesta" messageRef="p03_Msg_Resultado"/>
+  </bpmn:collaboration>
+  <bpmn:process id="p03_Proc_Compra" name="Reserva y compra de entrada" isExecutable="false" processType="None">
+    <bpmn:laneSet id="p03_LaneSet_Proc_Compra">
+      <bpmn:lane id="p03_Lane_Asistente" name="Asistente">
+        <bpmn:flowNodeRef>p03_Inicio</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_Seleccionar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_DatosPago</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_Descargar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Fin_Emitida</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_B_Temporizador</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="p03_Lane_Plataforma" name="Plataforma (sistema)">
+        <bpmn:flowNodeRef>p03_T_Disponibilidad</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Gw_Cupos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_Reservar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_LiberarComp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_SinCupos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Fin_SinCupos</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_LiberarExp</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Fin_Expirada</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_SolicitarCobro</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Ev_Respuesta</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Gw_Pago</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_Confirmar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Ev_Compensar</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_SP_Emitir</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_T_Rechazo</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_Fin_NoCompletada</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>p03_B_Compensacion</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="p03_Inicio" name="Asistente desea comprar una entrada">
+      <bpmn:outgoing>p03_F01</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:userTask id="p03_T_Seleccionar" name="Seleccionar evento y tipo de entrada">
+      <bpmn:incoming>p03_F01</bpmn:incoming>
+      <bpmn:outgoing>p03_F02</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="p03_T_Disponibilidad" name="Verificar disponibilidad de cupos">
+      <bpmn:documentation>ms-reservas</bpmn:documentation>
+      <bpmn:incoming>p03_F02</bpmn:incoming>
+      <bpmn:outgoing>p03_F03</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:exclusiveGateway id="p03_Gw_Cupos" name="¿Hay cupos disponibles?" gatewayDirection="Diverging">
+      <bpmn:incoming>p03_F03</bpmn:incoming>
+      <bpmn:outgoing>p03_F04</bpmn:outgoing>
+      <bpmn:outgoing>p03_F05</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="p03_T_Reservar" name="Reservar cupo temporalmente">
+      <bpmn:documentation>ms-reservas: bloquea el cupo con vencimiento de 10 minutos.</bpmn:documentation>
+      <bpmn:incoming>p03_F04</bpmn:incoming>
+      <bpmn:outgoing>p03_F07</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="p03_T_LiberarComp" name="Liberar cupo reservado" isForCompensation="true">
+      <bpmn:documentation>Actividad de compensación de "Reservar cupo temporalmente".</bpmn:documentation>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="p03_T_SinCupos" name="Notificar falta de disponibilidad">
+      <bpmn:incoming>p03_F05</bpmn:incoming>
+      <bpmn:outgoing>p03_F06</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="p03_Fin_SinCupos" name="Compra no realizada: sin cupos">
+      <bpmn:incoming>p03_F06</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="p03_T_DatosPago" name="Ingresar datos de pago">
+      <bpmn:incoming>p03_F07</bpmn:incoming>
+      <bpmn:outgoing>p03_F08</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:serviceTask id="p03_T_LiberarExp" name="Liberar cupo por expiración">
+      <bpmn:documentation>ms-reservas</bpmn:documentation>
+      <bpmn:incoming>p03_F09</bpmn:incoming>
+      <bpmn:outgoing>p03_F10</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="p03_Fin_Expirada" name="Reserva expirada">
+      <bpmn:incoming>p03_F10</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:serviceTask id="p03_T_SolicitarCobro" name="Solicitar cobro a la pasarela">
+      <bpmn:documentation>ms-pagos: envía monto, moneda y token del medio de pago.</bpmn:documentation>
+      <bpmn:incoming>p03_F08</bpmn:incoming>
+      <bpmn:outgoing>p03_F11</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateCatchEvent id="p03_Ev_Respuesta" name="Respuesta de la pasarela recibida">
+      <bpmn:incoming>p03_F11</bpmn:incoming>
+      <bpmn:outgoing>p03_F12</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="p03_Def_Ev_Respuesta" messageRef="p03_Msg_Resultado"/>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:exclusiveGateway id="p03_Gw_Pago" name="¿Pago aprobado?" gatewayDirection="Diverging">
+      <bpmn:incoming>p03_F12</bpmn:incoming>
+      <bpmn:outgoing>p03_F13</bpmn:outgoing>
+      <bpmn:outgoing>p03_F14</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="p03_T_Confirmar" name="Confirmar venta del cupo">
+      <bpmn:documentation>ms-reservas: convierte la reserva temporal en venta definitiva.</bpmn:documentation>
+      <bpmn:incoming>p03_F13</bpmn:incoming>
+      <bpmn:outgoing>p03_F15</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateThrowEvent id="p03_Ev_Compensar" name="Compensar reserva de cupo">
+      <bpmn:incoming>p03_F14</bpmn:incoming>
+      <bpmn:outgoing>p03_F18</bpmn:outgoing>
+      <bpmn:compensateEventDefinition id="p03_Def_Ev_Compensar" activityRef="p03_T_Reservar" waitForCompletion="true"/>
+    </bpmn:intermediateThrowEvent>
+    <bpmn:subProcess id="p03_SP_Emitir" name="Emitir ticket">
+      <bpmn:incoming>p03_F15</bpmn:incoming>
+      <bpmn:outgoing>p03_F16</bpmn:outgoing>
+      <bpmn:startEvent id="p03_SP_Inicio" name="Inicio de emisión">
+        <bpmn:outgoing>p03_SPF1</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="p03_SP_QR" name="Generar código QR único">
+        <bpmn:documentation>ms-tickets: QR firmado.</bpmn:documentation>
+        <bpmn:incoming>p03_SPF1</bpmn:incoming>
+        <bpmn:outgoing>p03_SPF2</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="p03_SP_Registrar" name="Registrar ticket emitido">
+        <bpmn:documentation>ms-tickets</bpmn:documentation>
+        <bpmn:incoming>p03_SPF2</bpmn:incoming>
+        <bpmn:outgoing>p03_SPF3</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="p03_SP_Enviar" name="Enviar ticket por correo electrónico">
+        <bpmn:documentation>ms-notificaciones</bpmn:documentation>
+        <bpmn:incoming>p03_SPF3</bpmn:incoming>
+        <bpmn:outgoing>p03_SPF4</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="p03_SP_Fin" name="Ticket emitido">
+        <bpmn:incoming>p03_SPF4</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="p03_SPF1" sourceRef="p03_SP_Inicio" targetRef="p03_SP_QR"/>
+      <bpmn:sequenceFlow id="p03_SPF2" sourceRef="p03_SP_QR" targetRef="p03_SP_Registrar"/>
+      <bpmn:sequenceFlow id="p03_SPF3" sourceRef="p03_SP_Registrar" targetRef="p03_SP_Enviar"/>
+      <bpmn:sequenceFlow id="p03_SPF4" sourceRef="p03_SP_Enviar" targetRef="p03_SP_Fin"/>
+    </bpmn:subProcess>
+    <bpmn:serviceTask id="p03_T_Rechazo" name="Notificar pago rechazado">
+      <bpmn:incoming>p03_F18</bpmn:incoming>
+      <bpmn:outgoing>p03_F19</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="p03_Fin_NoCompletada" name="Compra no completada">
+      <bpmn:incoming>p03_F19</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="p03_T_Descargar" name="Recibir y descargar el ticket">
+      <bpmn:incoming>p03_F16</bpmn:incoming>
+      <bpmn:outgoing>p03_F17</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="p03_Fin_Emitida" name="Entrada emitida">
+      <bpmn:incoming>p03_F17</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="p03_B_Temporizador" name="10 minutos" attachedToRef="p03_T_DatosPago" cancelActivity="true">
+      <bpmn:outgoing>p03_F09</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="p03_Def_B_Temporizador">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">PT10M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="p03_B_Compensacion" attachedToRef="p03_T_Reservar">
+      <bpmn:compensateEventDefinition id="p03_Def_B_Compensacion"/>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="p03_F01" sourceRef="p03_Inicio" targetRef="p03_T_Seleccionar"/>
+    <bpmn:sequenceFlow id="p03_F02" sourceRef="p03_T_Seleccionar" targetRef="p03_T_Disponibilidad"/>
+    <bpmn:sequenceFlow id="p03_F03" sourceRef="p03_T_Disponibilidad" targetRef="p03_Gw_Cupos"/>
+    <bpmn:sequenceFlow id="p03_F04" name="Sí" sourceRef="p03_Gw_Cupos" targetRef="p03_T_Reservar"/>
+    <bpmn:sequenceFlow id="p03_F05" name="No" sourceRef="p03_Gw_Cupos" targetRef="p03_T_SinCupos"/>
+    <bpmn:sequenceFlow id="p03_F06" sourceRef="p03_T_SinCupos" targetRef="p03_Fin_SinCupos"/>
+    <bpmn:sequenceFlow id="p03_F07" sourceRef="p03_T_Reservar" targetRef="p03_T_DatosPago"/>
+    <bpmn:sequenceFlow id="p03_F08" sourceRef="p03_T_DatosPago" targetRef="p03_T_SolicitarCobro"/>
+    <bpmn:sequenceFlow id="p03_F09" sourceRef="p03_B_Temporizador" targetRef="p03_T_LiberarExp"/>
+    <bpmn:sequenceFlow id="p03_F10" sourceRef="p03_T_LiberarExp" targetRef="p03_Fin_Expirada"/>
+    <bpmn:sequenceFlow id="p03_F11" sourceRef="p03_T_SolicitarCobro" targetRef="p03_Ev_Respuesta"/>
+    <bpmn:sequenceFlow id="p03_F12" sourceRef="p03_Ev_Respuesta" targetRef="p03_Gw_Pago"/>
+    <bpmn:sequenceFlow id="p03_F13" name="Sí" sourceRef="p03_Gw_Pago" targetRef="p03_T_Confirmar"/>
+    <bpmn:sequenceFlow id="p03_F14" name="No" sourceRef="p03_Gw_Pago" targetRef="p03_Ev_Compensar"/>
+    <bpmn:sequenceFlow id="p03_F15" sourceRef="p03_T_Confirmar" targetRef="p03_SP_Emitir"/>
+    <bpmn:sequenceFlow id="p03_F16" sourceRef="p03_SP_Emitir" targetRef="p03_T_Descargar"/>
+    <bpmn:sequenceFlow id="p03_F17" sourceRef="p03_T_Descargar" targetRef="p03_Fin_Emitida"/>
+    <bpmn:sequenceFlow id="p03_F18" sourceRef="p03_Ev_Compensar" targetRef="p03_T_Rechazo"/>
+    <bpmn:sequenceFlow id="p03_F19" sourceRef="p03_T_Rechazo" targetRef="p03_Fin_NoCompletada"/>
+    <bpmn:textAnnotation id="p03_Nota_Expira">
+      <bpmn:text>La reserva expira si el pago no se completa en 10 minutos.</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="p03_Asoc_Compensacion" associationDirection="One" sourceRef="p03_B_Compensacion" targetRef="p03_T_LiberarComp"/>
+    <bpmn:association id="p03_Asoc_Nota_Expira" associationDirection="None" sourceRef="p03_Nota_Expira" targetRef="p03_B_Temporizador"/>
+  </bpmn:process>
+  <bpmn:process id="p03_Proc_Cobro" name="Procesamiento del cobro" isExecutable="false" processType="None">
+    <bpmn:startEvent id="p03_PG_Inicio" name="Solicitud de cobro recibida">
+      <bpmn:outgoing>p03_PF1</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="p03_Def_PG_Inicio" messageRef="p03_Msg_Cobro"/>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="p03_PG_Autorizar" name="Autorizar transacción con el banco emisor">
+      <bpmn:incoming>p03_PF1</bpmn:incoming>
+      <bpmn:outgoing>p03_PF2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="p03_PG_Fin" name="Resultado de la transacción enviado">
+      <bpmn:incoming>p03_PF2</bpmn:incoming>
+      <bpmn:messageEventDefinition id="p03_Def_PG_Fin" messageRef="p03_Msg_Resultado"/>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="p03_PF1" sourceRef="p03_PG_Inicio" targetRef="p03_PG_Autorizar"/>
+    <bpmn:sequenceFlow id="p03_PF2" sourceRef="p03_PG_Autorizar" targetRef="p03_PG_Fin"/>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="p03_Diagrama" name="Reserva y compra de entrada">
+    <bpmndi:BPMNPlane id="p03_Plano" bpmnElement="p03_Colaboracion">
+      <bpmndi:BPMNShape id="p03_Pool_Sistema_di" bpmnElement="p03_Pool_Sistema" isHorizontal="true">
+        <dc:Bounds x="40" y="40" width="3090" height="870"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Lane_Asistente_di" bpmnElement="p03_Lane_Asistente" isHorizontal="true">
+        <dc:Bounds x="70" y="40" width="3060" height="310"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Lane_Plataforma_di" bpmnElement="p03_Lane_Plataforma" isHorizontal="true">
+        <dc:Bounds x="70" y="350" width="3060" height="560"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Pool_Pasarela_di" bpmnElement="p03_Pool_Pasarela" isHorizontal="true">
+        <dc:Bounds x="40" y="980" width="3090" height="160"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Inicio_di" bpmnElement="p03_Inicio">
+        <dc:Bounds x="150" y="102" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="127" y="144" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Seleccionar_di" bpmnElement="p03_T_Seleccionar">
+        <dc:Bounds x="246" y="85" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Disponibilidad_di" bpmnElement="p03_T_Disponibilidad">
+        <dc:Bounds x="436" y="435" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Gw_Cupos_di" bpmnElement="p03_Gw_Cupos">
+        <dc:Bounds x="626" y="450" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="603" y="416" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Reservar_di" bpmnElement="p03_T_Reservar">
+        <dc:Bounds x="726" y="435" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_LiberarComp_di" bpmnElement="p03_T_LiberarComp">
+        <dc:Bounds x="726" y="635" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_SinCupos_di" bpmnElement="p03_T_SinCupos">
+        <dc:Bounds x="726" y="795" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Fin_SinCupos_di" bpmnElement="p03_Fin_SinCupos">
+        <dc:Bounds x="963" y="812" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="940" y="854" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_DatosPago_di" bpmnElement="p03_T_DatosPago">
+        <dc:Bounds x="916" y="85" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_LiberarExp_di" bpmnElement="p03_T_LiberarExp">
+        <dc:Bounds x="916" y="635" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Fin_Expirada_di" bpmnElement="p03_Fin_Expirada">
+        <dc:Bounds x="1173" y="652" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1150" y="694" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_SolicitarCobro_di" bpmnElement="p03_T_SolicitarCobro">
+        <dc:Bounds x="1336" y="435" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Ev_Respuesta_di" bpmnElement="p03_Ev_Respuesta">
+        <dc:Bounds x="1716" y="452" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1693" y="404" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Gw_Pago_di" bpmnElement="p03_Gw_Pago">
+        <dc:Bounds x="1812" y="450" width="40" height="40"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1789" y="416" width="86" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Confirmar_di" bpmnElement="p03_T_Confirmar">
+        <dc:Bounds x="1912" y="435" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Ev_Compensar_di" bpmnElement="p03_Ev_Compensar">
+        <dc:Bounds x="1959" y="652" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1936" y="694" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_Emitir_di" bpmnElement="p03_SP_Emitir" isExpanded="true">
+        <dc:Bounds x="2102" y="395" width="682" height="150"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Rechazo_di" bpmnElement="p03_T_Rechazo">
+        <dc:Bounds x="2378" y="635" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Fin_NoCompletada_di" bpmnElement="p03_Fin_NoCompletada">
+        <dc:Bounds x="2891" y="652" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2868" y="694" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_T_Descargar_di" bpmnElement="p03_T_Descargar">
+        <dc:Bounds x="2844" y="85" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Fin_Emitida_di" bpmnElement="p03_Fin_Emitida">
+        <dc:Bounds x="3034" y="102" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="3011" y="144" width="82" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_Nota_Expira_di" bpmnElement="p03_Nota_Expira">
+        <dc:Bounds x="1106" y="245" width="170" height="60"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_PG_Inicio_di" bpmnElement="p03_PG_Inicio">
+        <dc:Bounds x="1383" y="1042" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1360" y="1084" width="82" height="42"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_PG_Autorizar_di" bpmnElement="p03_PG_Autorizar">
+        <dc:Bounds x="1526" y="1025" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_PG_Fin_di" bpmnElement="p03_PG_Fin">
+        <dc:Bounds x="1716" y="1042" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1693" y="1084" width="82" height="56"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_Inicio_di" bpmnElement="p03_SP_Inicio">
+        <dc:Bounds x="2132" y="464" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2112" y="506" width="76" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_QR_di" bpmnElement="p03_SP_QR">
+        <dc:Bounds x="2208" y="447" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_Registrar_di" bpmnElement="p03_SP_Registrar">
+        <dc:Bounds x="2378" y="447" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_Enviar_di" bpmnElement="p03_SP_Enviar">
+        <dc:Bounds x="2548" y="447" width="130" height="70"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_SP_Fin_di" bpmnElement="p03_SP_Fin">
+        <dc:Bounds x="2718" y="464" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="2698" y="506" width="76" height="28"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_B_Temporizador_di" bpmnElement="p03_B_Temporizador">
+        <dc:Bounds x="963" y="137" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1003" y="167" width="90" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="p03_B_Compensacion_di" bpmnElement="p03_B_Compensacion">
+        <dc:Bounds x="773" y="487" width="36" height="36"/>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="p03_SPF1_di" bpmnElement="p03_SPF1">
+        <di:waypoint x="2168" y="482"/>
+        <di:waypoint x="2208" y="482"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_SPF2_di" bpmnElement="p03_SPF2">
+        <di:waypoint x="2338" y="482"/>
+        <di:waypoint x="2378" y="482"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_SPF3_di" bpmnElement="p03_SPF3">
+        <di:waypoint x="2508" y="482"/>
+        <di:waypoint x="2548" y="482"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_SPF4_di" bpmnElement="p03_SPF4">
+        <di:waypoint x="2678" y="482"/>
+        <di:waypoint x="2718" y="482"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F01_di" bpmnElement="p03_F01">
+        <di:waypoint x="186" y="120"/>
+        <di:waypoint x="246" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F02_di" bpmnElement="p03_F02">
+        <di:waypoint x="376" y="120"/>
+        <di:waypoint x="406" y="120"/>
+        <di:waypoint x="406" y="470"/>
+        <di:waypoint x="436" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F03_di" bpmnElement="p03_F03">
+        <di:waypoint x="566" y="470"/>
+        <di:waypoint x="626" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F04_di" bpmnElement="p03_F04">
+        <di:waypoint x="666" y="470"/>
+        <di:waypoint x="726" y="470"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="672" y="452" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F05_di" bpmnElement="p03_F05">
+        <di:waypoint x="646" y="490"/>
+        <di:waypoint x="646" y="830"/>
+        <di:waypoint x="726" y="830"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="652" y="494" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F06_di" bpmnElement="p03_F06">
+        <di:waypoint x="856" y="830"/>
+        <di:waypoint x="963" y="830"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F07_di" bpmnElement="p03_F07">
+        <di:waypoint x="856" y="470"/>
+        <di:waypoint x="886" y="470"/>
+        <di:waypoint x="886" y="120"/>
+        <di:waypoint x="916" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F08_di" bpmnElement="p03_F08">
+        <di:waypoint x="1046" y="120"/>
+        <di:waypoint x="1306" y="120"/>
+        <di:waypoint x="1306" y="470"/>
+        <di:waypoint x="1336" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F09_di" bpmnElement="p03_F09">
+        <di:waypoint x="981" y="173"/>
+        <di:waypoint x="981" y="635"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F10_di" bpmnElement="p03_F10">
+        <di:waypoint x="1046" y="670"/>
+        <di:waypoint x="1173" y="670"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F11_di" bpmnElement="p03_F11">
+        <di:waypoint x="1466" y="470"/>
+        <di:waypoint x="1716" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F12_di" bpmnElement="p03_F12">
+        <di:waypoint x="1752" y="470"/>
+        <di:waypoint x="1812" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F13_di" bpmnElement="p03_F13">
+        <di:waypoint x="1852" y="470"/>
+        <di:waypoint x="1912" y="470"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1858" y="452" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F14_di" bpmnElement="p03_F14">
+        <di:waypoint x="1832" y="490"/>
+        <di:waypoint x="1832" y="670"/>
+        <di:waypoint x="1959" y="670"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1838" y="494" width="24" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F15_di" bpmnElement="p03_F15">
+        <di:waypoint x="2042" y="470"/>
+        <di:waypoint x="2102" y="470"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F16_di" bpmnElement="p03_F16">
+        <di:waypoint x="2784" y="470"/>
+        <di:waypoint x="2814" y="470"/>
+        <di:waypoint x="2814" y="120"/>
+        <di:waypoint x="2844" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F17_di" bpmnElement="p03_F17">
+        <di:waypoint x="2974" y="120"/>
+        <di:waypoint x="3034" y="120"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F18_di" bpmnElement="p03_F18">
+        <di:waypoint x="1995" y="670"/>
+        <di:waypoint x="2378" y="670"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_F19_di" bpmnElement="p03_F19">
+        <di:waypoint x="2508" y="670"/>
+        <di:waypoint x="2891" y="670"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_PF1_di" bpmnElement="p03_PF1">
+        <di:waypoint x="1419" y="1060"/>
+        <di:waypoint x="1526" y="1060"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_PF2_di" bpmnElement="p03_PF2">
+        <di:waypoint x="1656" y="1060"/>
+        <di:waypoint x="1716" y="1060"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_MF_Cobro_di" bpmnElement="p03_MF_Cobro">
+        <di:waypoint x="1401" y="505"/>
+        <di:waypoint x="1401" y="1042"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1409" y="766" width="110" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_MF_Resultado_di" bpmnElement="p03_MF_Resultado">
+        <di:waypoint x="1734" y="1042"/>
+        <di:waypoint x="1734" y="488"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="1742" y="758" width="110" height="14"/></bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_Asoc_Compensacion_di" bpmnElement="p03_Asoc_Compensacion">
+        <di:waypoint x="791" y="523"/>
+        <di:waypoint x="791" y="635"/>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="p03_Asoc_Nota_Expira_di" bpmnElement="p03_Asoc_Nota_Expira">
+        <di:waypoint x="1106" y="275"/>
+        <di:waypoint x="999" y="155"/>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
