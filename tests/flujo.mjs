@@ -93,4 +93,11 @@ const correos = await esperar('comprobante en Mailpit', async () => {
 });
 comprobar(correos.messages_count === 1, `RF16/RNF14: un solo comprobante pese al webhook repetido (${correos.messages_count})`);
 
+// CU15/CU16 · RN07: cancelar el evento reembolsa y anula sus tickets (y lo saca del catálogo de la demo)
+comprobar((await http('POST', `${URL.catalog}/events/${evento.id}/cancel`, { token: org })).status === 200, 'CU15: el organizador cancela el evento');
+const reembolsada = await esperar('orden reembolsada', async () => (await http('GET', `${URL.orders}/orders/${orden.datos.id}`, { token: ana })).datos.estado === 'REEMBOLSADA');
+comprobar(reembolsada, 'RN07: la orden pagada pasa a REEMBOLSADA');
+const anulados = await esperar('tickets anulados', async () => (await deLaOrden()).every((t) => t.estado !== 'VALIDO') && deLaOrden());
+comprobar(anulados.length === 2, 'CU16: los tickets del evento cancelado quedan anulados');
+
 terminar('Flujo');

@@ -6,7 +6,8 @@ const USUARIOS = 200;
 const CUPO = 50;
 
 console.log(`\nPrueba de concurrencia: ${USUARIOS} usuarios contra un cupo de ${CUPO}`);
-const evento = await crearEvento(await login('organizador@eventos.ec'), [{ nombre: 'General', precio: 5, cupo: CUPO }]);
+const org = await login('organizador@eventos.ec');
+const evento = await crearEvento(org, [{ nombre: 'General', precio: 5, cupo: CUPO }]);
 const tipo = evento.tipos[0];
 const tokens = Array.from({ length: USUARIOS }, () => tokenDePrueba(crypto.randomUUID()));
 
@@ -29,4 +30,5 @@ comprobar(cuenta(409) === USUARIOS - CUPO, `${USUARIOS - CUPO} rechazadas por fa
 comprobar(disponible === 0, `cupos disponibles al final = 0 (quedó ${disponible}), sin sobreventa`);
 comprobar(respuestas.every((r) => r.status < 500), 'ningún error 5xx (RNF02)');
 comprobar(p95 < 500, `p95 menor a 500 ms (RNF01): ${p95.toFixed(0)} ms`);
+await http('POST', `${URL.catalog}/events/${evento.id}/cancel`, { token: org }); // fuera del catálogo de la demo
 terminar('Concurrencia');
