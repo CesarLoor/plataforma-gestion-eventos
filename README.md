@@ -1,41 +1,125 @@
-# Aforo · Plataforma de gestión de eventos
+# 🎟️ Aforo · Plataforma de Gestión de Eventos
 
-Plataforma web (PWA) para publicar eventos locales, reservar y vender entradas **sin sobreventa**, emitir tickets con **QR firmado** y controlar el ingreso **incluso sin conexión**. Son microservicios coordinados por eventos y desplegados con Docker en un solo servidor.
+Plataforma web progresiva (**PWA**) diseñada para publicar eventos locales, gestionar reservas y vender entradas de forma segura, evitando la **sobreventa**, emitiendo tickets con **códigos QR firmados** y permitiendo controlar el ingreso **incluso sin conexión a Internet**.
 
-Proyecto de la asignatura **Construcción y evolución del software** (NRC 36847), Carrera de Ingeniería de Software, ESPE.
-**Tutora:** Mayra Isabel Alvarez Jimenez · **Equipo:** Cesar Ignacio Loor Mercado, Kevin David Asmal Haro
+La solución está desarrollada mediante una arquitectura de **microservicios coordinados por eventos**, desplegados con Docker en un único servidor.
 
-> Primer prototipo funcional. El stack tecnológico, los microservicios y la arquitectura están en [`docs/arquitectura.md`](docs/arquitectura.md).
+---
 
-**Stack:** Node.js 22 + Fastify 5 · PostgreSQL 16 (una base por servicio) · NATS JetStream · React 18 + Vite (PWA) · Traefik 3 · Docker Compose · AWS EC2 · GitHub Actions con Trivy y gitleaks.
+## 🎓 Información académica
 
-## Levantar en local
+- **Asignatura:** Construcción y evolución del software
+- **NRC:** 36847
+- **Carrera:** Ingeniería de Software
+- **Institución:** Escuela Superior Politécnica del Ejército (ESPE)
+- **Tutora:** Mayra Isabel Alvarez Jimenez
+- **👥 Equipo de desarrollo:**
+  - Cesar Ignacio Loor Mercado
+  - Kevin David Asmal Haro
 
-Requisitos: Docker y Node.js 22.
+> 🚧 **Estado del proyecto:** Primer prototipo funcional. El stack tecnológico, los microservicios y la arquitectura se encuentran documentados en [`docs/arquitectura.md`](docs/arquitectura.md).
+
+---
+
+## 🛠️ Stack tecnológico
+
+| Componente | Tecnología |
+|---|---|
+| ⚙️ Backend | Node.js 22 + Fastify 5 |
+| 🗄️ Base de datos | PostgreSQL 16 (una base por servicio) |
+| 📨 Mensajería y eventos | NATS JetStream |
+| 🖥️ Frontend | React 18 + Vite (PWA) |
+| 🌐 Proxy inverso | Traefik 3 |
+| 🐳 Contenedores | Docker Compose |
+| ☁️ Infraestructura | AWS EC2 |
+| 🔄 Integración continua | GitHub Actions |
+| 🛡️ Seguridad | Trivy y gitleaks |
+
+---
+
+## 🚀 Levantar en local
+
+### 📋 Requisitos previos
+
+- 🐳 Docker instalado y en ejecución.
+- 🟢 Node.js 22 instalado.
+
+### ⚡ Instalación y ejecución
+
+Ejecuta los siguientes comandos desde el directorio raíz del proyecto:
+
+**1. Generar las variables de entorno**
 
 ```bash
-npm run env                    # crea .env con contraseñas y claves aleatorias (imprime la contraseña de los usuarios semilla)
-docker compose up -d --build   # levanta los 9 servicios, la PWA, Postgres, NATS, Traefik y Mailpit
+npm run env
 ```
 
-- App: **https://localhost** (en local el certificado es autofirmado; acepta la advertencia del navegador)
-- Correos de prueba (Mailpit): http://localhost:8025
-- OpenAPI de cada servicio: `docker compose exec <servicio> wget -qO- localhost:3000/docs/json`
+Genera el archivo `.env` con contraseñas y claves aleatorias e imprime la contraseña de los usuarios semilla.
 
-### Usuarios de prueba
+**2. Construir e iniciar los servicios**
 
-Todos usan la contraseña `SEED_PASSWORD` del `.env`.
+```bash
+docker compose up -d --build
+```
 
-| Rol | Correo |
+Construye las imágenes e inicia los 9 servicios, la PWA, PostgreSQL, NATS, Traefik y Mailpit.
+
+### 🌐 Servicios disponibles
+
+| Servicio | Dirección o comando |
 |---|---|
-| Asistente | `asistente@eventos.ec` (y `asistente2@eventos.ec`) |
-| Organizador | `organizador@eventos.ec` |
-| Personal de acceso | `acceso@eventos.ec` |
-| Administración | `admin@eventos.ec` |
+| 🖥️ Aplicación web | **https://localhost** |
+| 📧 Correos de prueba (Mailpit) | http://localhost:8025 |
+| 📘 Documentación OpenAPI de cada servicio | Comando siguiente |
 
-Hay 3 eventos de ejemplo:
-- Noche de Jazz en La Ronda (Quito), casi agotado.
-- Feria Gastronómica del Valle (Sangolquí).
+> ⚠️ **Nota:** En el entorno local, el certificado HTTPS es autofirmado. Acepta la advertencia de seguridad del navegador para acceder a la aplicación.
+
+### 📘 Consultar la documentación OpenAPI
+
+Para consultar la especificación OpenAPI en formato JSON de un servicio, ejecuta:
+
+```bash
+docker compose exec <servicio> wget -qO- localhost:3000/docs/json
+```
+
+Sustituye `<servicio>` por el nombre del servicio que deseas consultar.
+
+---
+
+## 👤 Usuarios de prueba
+
+Todos los usuarios utilizan la contraseña definida en la variable `SEED_PASSWORD` del archivo `.env`.
+
+| Rol | Correo electrónico |
+|---|---|
+| 🎫 Asistente | `asistente@eventos.ec` y `asistente2@eventos.ec` |
+| 📅 Organizador | `organizador@eventos.ec` |
+| 🚪 Personal de acceso | `acceso@eventos.ec` |
+| 🔐 Administración | `admin@eventos.ec` |
+
+> 🔒 **Seguridad:** Las credenciales están destinadas al entorno de pruebas. No compartas el archivo `.env`, ya que contiene contraseñas y claves de configuración.
+
+---
+
+## 🎉 Eventos de ejemplo
+
+La plataforma dispone de eventos de ejemplo para explorar sus funcionalidades:
+
+- 🎷 **Noche de Jazz en La Ronda** — Quito. Evento con disponibilidad de entradas cercana a agotarse.
+- 🍽️ **Feria Gastronómica del Valle** — Sangolquí.
+
+---
+
+<div align="center">
+
+### 🎟️ Aforo
+
+**Plataforma de Gestión de Eventos**
+
+*Proyecto académico · Ingeniería de Software · ESPE*
+
+</div>
+
 - Festival Malecón Sonoro (Guayaquil), agotado.
 
 El código `ESPE10` da un 10 % de descuento.
