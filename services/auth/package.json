@@ -1,0 +1,13 @@
+{
+  "name": "@plataforma/auth",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "@fastify/cookie": "^11.0.1",
+    "@plataforma/common": "*",
+    "bcryptjs": "^2.4.3",
+    "jose": "^5.9.6"
+  }
+}
