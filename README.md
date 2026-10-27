@@ -5,7 +5,9 @@ Plataforma web (PWA) para publicar eventos locales, reservar y vender entradas *
 Proyecto de la asignatura **Construcción y evolución del software** (NRC 36847), Carrera de Ingeniería de Software, ESPE.
 **Tutora:** Mayra Isabel Alvarez Jimenez · **Equipo:** Cesar Ignacio Loor Mercado, Kevin David Asmal Haro
 
-> Primer prototipo funcional. El stack y las decisiones están en [`docs/decisiones.md`](docs/decisiones.md); la arquitectura, en [`docs/arquitectura.md`](docs/arquitectura.md).
+> Primer prototipo funcional. El stack tecnológico, los microservicios y la arquitectura están en [`docs/arquitectura.md`](docs/arquitectura.md).
+
+**Stack:** Node.js 22 + Fastify 5 · PostgreSQL 16 (una base por servicio) · NATS JetStream · React 18 + Vite (PWA) · Traefik 3 · Docker Compose · AWS EC2 · GitHub Actions con Trivy y gitleaks.
 
 ## Levantar en local
 
@@ -87,6 +89,8 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
 
 ## Seguridad
 
+Cada vulnerabilidad identificada (V1 a V8) tiene su control, alineado con el **OWASP Top 10:2025** (tabla en `docs/arquitectura.md`, sección 9).
+
 - **Gateway (Traefik):**
   - HTTPS con HSTS, CSP estricta y `X-Content-Type-Options`.
   - Límite de peticiones: login y registro, 5 por minuto; reservas, 20 por minuto.
@@ -112,9 +116,7 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
 
 | Archivo | Contenido |
 |---|---|
-| [`docs/base-conocimiento.md`](docs/base-conocimiento.md) | Problemática, objetivos, RF01-RF28, RNF01-RNF14, CU01-CU25, reglas, riesgos y pantallas |
-| [`docs/arquitectura.md`](docs/arquitectura.md) | Carpetas, API, eventos de dominio y saga de compra |
-| [`docs/decisiones.md`](docs/decisiones.md) | Stack y ADR |
+| [`docs/arquitectura.md`](docs/arquitectura.md) | Stack tecnológico, microservicios, API, eventos, saga de compra y seguridad (OWASP Top 10:2025) |
 | [`docs/usuarios-y-pantallas.md`](docs/usuarios-y-pantallas.md) | Qué puede hacer cada rol, cada pantalla y guion de demostración |
 | [`docs/operacion.md`](docs/operacion.md) | Servidor EC2: acceso, encendido, despliegue, respaldos y costos |
 | [`docs/procesos/`](docs/procesos/LEEME.md) | BPMN 2.0 y modelos de Bizagi |
