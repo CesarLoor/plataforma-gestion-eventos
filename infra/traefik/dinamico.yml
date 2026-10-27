@@ -1,0 +1,80 @@
+# Rutas públicas, límites de peticiones y cabeceras de seguridad. Plantilla: Traefik reemplaza {{ env "DOMAIN" }}.
+# Local (DOMAIN=localhost): certificado propio de Traefik. EC2: certificado de Let's Encrypt.
+{{ $tls := "{}" }}{{ if ne (env "DOMAIN") "localhost" }}{{ $tls = "{ certResolver: le }" }}{{ end }}
+http:
+  routers:
+    pwa:
+      rule: 'Host(`{{ env "DOMAIN" }}`)'
+      priority: 1
+      service: pwa
+      middlewares: [seguridad]
+      tls: {{ $tls }}
+    pasarela:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/pasarela`)'
+      service: payment-sim
+      middlewares: [seguridad, sin-pasarela]
+      tls: {{ $tls }}
+    # Las rutas /internal/* son solo para la red de Docker: desde afuera responden 403
+    internas:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathRegexp(`^/api/[^/]+/internal(/|$)`)'
+      priority: 1000
+      service: pwa
+      middlewares: [bloquear]
+      tls: {{ $tls }}
+    login:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && (Path(`/api/auth/login`) || Path(`/api/auth/register`))'
+      priority: 500
+      service: auth
+      middlewares: [limite-login, seguridad, sin-prefijo]
+      tls: {{ $tls }}
+    reservas:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && Path(`/api/inventory/reservations`)'
+      priority: 500
+      service: inventory
+      middlewares: [limite-reservas, seguridad, sin-prefijo]
+      tls: {{ $tls }}
+{{ range $s := list "auth" "catalog" "inventory" "orders" "tickets" "checkin" "reports" }}
+    api-{{ $s }}:
+      rule: 'Host(`{{ env "DOMAIN" }}`) && PathPrefix(`/api/{{ $s }}`)'
+      priority: 100
+      service: {{ $s }}
+      middlewares: [limite-api, seguridad, sin-prefijo]
+      tls: {{ $tls }}
+{{ end }}
+  middlewares:
+    sin-prefijo:
+      stripPrefixRegex:
+        regex: ['^/api/[^/]+']
+    sin-pasarela:
+      stripPrefix:
+        prefixes: ['/pasarela']
+    bloquear:
+      ipAllowList:
+        sourceRange: ['127.0.0.2/32']
+    limite-login:
+      rateLimit: { average: 5, period: 1m, burst: 5 }
+    limite-reservas:
+      rateLimit: { average: 20, period: 1m, burst: 10 }
+    limite-api:
+      rateLimit: { average: 300, period: 1m, burst: 100 }
+    seguridad:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        frameDeny: true
+        referrerPolicy: strict-origin-when-cross-origin
+        permissionsPolicy: 'camera=(self), microphone=(), geolocation=()'
+        contentSecurityPolicy: "default-src 'self'; img-src 'self' data: blob:; style-src 'self'; script-src 'self'; connect-src 'self'; font-src 'self'; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        customResponseHeaders:
+          X-Powered-By: ''
+          Server: ''
+  services:
+    pwa:
+      loadBalancer: { servers: [{ url: 'http://pwa:8080' }] }
+    payment-sim:
+      loadBalancer: { servers: [{ url: 'http://payment-sim:3000' }] }
+{{ range $s := list "auth" "catalog" "inventory" "orders" "tickets" "checkin" "reports" }}
+    {{ $s }}:
+      loadBalancer: { servers: [{ url: 'http://{{ $s }}:3000' }] }
+{{ end }}

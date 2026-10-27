@@ -1,0 +1,149 @@
+# Levanta toda la plataforma: docker compose up -d --build   (antes: npm run env)
+name: plataforma-eventos
+
+x-servicio: &servicio
+  restart: unless-stopped
+  env_file: .env
+  depends_on:
+    postgres: { condition: service_healthy }
+    nats: { condition: service_healthy }
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ['no-new-privileges:true']
+  cap_drop: [ALL]
+
+services:
+  traefik:
+    image: traefik:v3.3
+    restart: unless-stopped
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --providers.file.filename=/etc/traefik/dinamico.yml
+      - --certificatesresolvers.le.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --accesslog=true
+      - --log.level=INFO
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports: ['80:80', '443:443']
+    volumes:
+      - ./infra/traefik/dinamico.yml:/etc/traefik/dinamico.yml:ro
+      - letsencrypt:/letsencrypt
+    security_opt: ['no-new-privileges:true']
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_USER: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 20
+    security_opt: ['no-new-privileges:true']
+
+  nats:
+    image: nats:2.10-alpine
+    restart: unless-stopped
+    command: ['-js', '-sd', '/data', '-m', '8222']
+    volumes: [natsdata:/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:8222/healthz || exit 1']
+      interval: 5s
+      retries: 20
+    security_opt: ['no-new-privileges:true']
+
+  mailpit:
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports: ['127.0.0.1:8025:8025']
+
+  auth:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: auth } }
+    environment:
+      DATABASE_URL: postgres://auth:${DB_PASS_AUTH}@postgres:5432/auth
+      NATS_URL: nats://nats:4222
+
+  catalog:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: catalog } }
+    environment:
+      DATABASE_URL: postgres://catalog:${DB_PASS_CATALOG}@postgres:5432/catalog
+      NATS_URL: nats://nats:4222
+
+  inventory:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: inventory } }
+    environment:
+      DATABASE_URL: postgres://inventory:${DB_PASS_INVENTORY}@postgres:5432/inventory
+      NATS_URL: nats://nats:4222
+      DB_POOL: 30
+
+  orders:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: orders } }
+    environment:
+      DATABASE_URL: postgres://orders:${DB_PASS_ORDERS}@postgres:5432/orders
+      NATS_URL: nats://nats:4222
+
+  payment-sim:
+    <<: *servicio
+    depends_on: []
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: payment-sim } }
+
+  tickets:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: tickets } }
+    environment:
+      DATABASE_URL: postgres://tickets:${DB_PASS_TICKETS}@postgres:5432/tickets
+      NATS_URL: nats://nats:4222
+
+  checkin:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: checkin } }
+    environment:
+      DATABASE_URL: postgres://checkin:${DB_PASS_CHECKIN}@postgres:5432/checkin
+      NATS_URL: nats://nats:4222
+
+  notifications:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: notifications } }
+    environment:
+      DATABASE_URL: postgres://notifications:${DB_PASS_NOTIFICATIONS}@postgres:5432/notifications
+      NATS_URL: nats://nats:4222
+
+  reports:
+    <<: *servicio
+    build: { context: ., dockerfile: infra/Dockerfile.servicio, args: { SERVICIO: reports } }
+    environment:
+      DATABASE_URL: postgres://reports:${DB_PASS_REPORTS}@postgres:5432/reports
+      NATS_URL: nats://nats:4222
+
+  pwa:
+    restart: unless-stopped
+    build: { context: ., dockerfile: apps/pwa/Dockerfile }
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: ['no-new-privileges:true']
+
+  # Pruebas de concurrencia y del flujo completo, dentro de la red de Docker (sin el rate limit de Traefik)
+  pruebas:
+    profiles: [pruebas]
+    image: node:22-alpine
+    env_file: .env
+    working_dir: /pruebas
+    volumes: ['./tests:/pruebas:ro']
+    command: ['sh', '-c', 'node concurrencia.mjs && node flujo.mjs']
+
+volumes:
+  pgdata:
+  natsdata:
+  letsencrypt:

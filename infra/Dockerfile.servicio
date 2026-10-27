@@ -1,0 +1,14 @@
+# Imagen de un microservicio. Uso: docker build -f infra/Dockerfile.servicio --build-arg SERVICIO=auth .
+FROM node:22-alpine
+ARG SERVICIO
+ENV NODE_ENV=production SERVICIO=${SERVICIO}
+WORKDIR /app
+COPY . .
+# Solo las dependencias de producción del servicio pedido (y del paquete común)
+RUN npm ci --omit=dev --workspace "services/${SERVICIO}" --include-workspace-root=false --no-audit --no-fund \
+ && rm -rf apps services/*/test && find services -mindepth 1 -maxdepth 1 ! -name "${SERVICIO}" -exec rm -rf {} + \
+ && npm cache clean --force
+USER node
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s CMD wget -qO- http://127.0.0.1:3000/health || exit 1
+CMD ["sh", "-c", "exec node services/$SERVICIO/src/index.js"]
