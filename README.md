@@ -115,5 +115,7 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
 | [`docs/base-conocimiento.md`](docs/base-conocimiento.md) | Problemática, objetivos, RF01-RF28, RNF01-RNF14, CU01-CU25, reglas, riesgos y pantallas |
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Carpetas, API, eventos de dominio y saga de compra |
 | [`docs/decisiones.md`](docs/decisiones.md) | Stack y ADR |
+| [`docs/usuarios-y-pantallas.md`](docs/usuarios-y-pantallas.md) | Qué puede hacer cada rol, cada pantalla y guion de demostración |
+| [`docs/operacion.md`](docs/operacion.md) | Servidor EC2: acceso, encendido, despliegue, respaldos y costos |
 | [`docs/procesos/`](docs/procesos/LEEME.md) | BPMN 2.0 y modelos de Bizagi |
 | [`docs/entregables/`](docs/entregables/) | PDF de las actividades entregadas |
