@@ -74,6 +74,22 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
 | Ingreso | Ingreso único; un QR alterado o de otro evento se rechaza (RN05, RNF07); la sincronización detecta duplicados (R10) |
 | Cuentas y servicios | Bloqueo tras 3 intentos fallidos (RNF05); las rutas internas requieren token de servicio (V6) |
 
+### Resultados
+
+| Prueba | Resultado | Meta |
+|---|---|---|
+| Unitarias (Vitest) | 5 de 5 correctas | — |
+| Concurrencia: 200 usuarios reservan a la vez un cupo de 50 | **50** reservas, **150** rechazos, **0** sobreventas, 0 errores 5xx | Cero sobreventas (RNF03, OE1) |
+| Tiempo de respuesta en esa prueba (p95) | 415 ms en local · 462 ms en GitHub Actions | < 500 ms (RNF01) |
+| Flujo completo y seguridad | **27 de 27** comprobaciones correctas | Todas |
+| Escaneo de secretos (gitleaks) | Sin hallazgos | 0 |
+| Dependencias de producción (`npm audit`) | 0 vulnerabilidades | 0 altas o críticas |
+| Imágenes Docker (Trivy) | 0 vulnerabilidades críticas en los 10 servicios (la PWA tras actualizar OpenSSL) | 0 críticas (OE6) |
+
+Prueba con usuarios reales en el servidor: una persona intentó agotar dos eventos comprando 112 entradas en 8 órdenes. El sistema vendió exactamente lo disponible (38 General y 4 VIP en un evento; 30 en otro tipo), emitió 112 tickets y no repitió ningún cobro.
+
+Las pruebas de concurrencia y de flujo corren en cada push dentro del pipeline (`.github/workflows/ci.yml`).
+
 ## Trazabilidad
 
 | Pantalla o servicio | RF | CU |

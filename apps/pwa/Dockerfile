@@ -5,6 +5,10 @@ COPY . .
 RUN npm ci --workspace apps/pwa --include-workspace-root=false --no-audit --no-fund && npm run build --workspace apps/pwa
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
+# Parches de seguridad de Alpine (p. ej. OpenSSL, CVE-2026-31789); luego se vuelve al usuario sin privilegios
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY apps/pwa/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/apps/pwa/dist /usr/share/nginx/html
 EXPOSE 8080
