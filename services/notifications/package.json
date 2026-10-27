@@ -1,0 +1,11 @@
+{
+  "name": "@plataforma/notifications",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "dependencies": {
+    "@plataforma/common": "*",
+    "nodemailer": "^10.2.1"
+  }
+}
