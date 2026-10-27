@@ -39,6 +39,33 @@ INSERT INTO cupos (tipo_entrada_id, evento_id, nombre, cupo, disponible) VALUES
  ('20000000-0000-4000-8000-000000000031', '10000000-0000-4000-8000-000000000003', 'General', 300, 0),
  ('20000000-0000-4000-8000-000000000032', '10000000-0000-4000-8000-000000000003', 'Preferencia', 80, 0)
 ON CONFLICT DO NOTHING;
+
+-- Reserva en un solo viaje a la base: si un tipo no alcanza, la excepción deshace todo (nada queda a medias).
+-- RN02: el UPDATE comprueba y descuenta en la misma sentencia; con compras simultáneas solo pasa quien alcanza cupo.
+CREATE OR REPLACE FUNCTION reservar(p_usuario uuid, p_evento uuid, p_tipos uuid[], p_cantidades int[], p_minutos int)
+RETURNS TABLE (id uuid, estado text, expira_en timestamptz) LANGUAGE plpgsql AS $$
+#variable_conflict use_column
+DECLARE
+  v_id uuid;
+  v_nombre text;
+  v_disponible int;
+BEGIN
+  -- El bloqueo del cupo se libera sin esperar el fsync. Una caída podría perder una reserva recién hecha,
+  -- pero siempre junto con su descuento (son atómicos): nunca hay sobreventa, a lo sumo se reserva de nuevo.
+  PERFORM set_config('synchronous_commit', 'off', true);
+  INSERT INTO reservas (usuario_id, evento_id, expira_en) VALUES (p_usuario, p_evento, now() + make_interval(mins => p_minutos)) RETURNING reservas.id INTO v_id;
+  FOR i IN 1 .. array_length(p_tipos, 1) LOOP
+    UPDATE cupos SET disponible = disponible - p_cantidades[i]
+     WHERE tipo_entrada_id = p_tipos[i] AND evento_id = p_evento AND activo AND disponible >= p_cantidades[i]
+       AND (venta_desde IS NULL OR venta_desde <= now()) AND (venta_hasta IS NULL OR venta_hasta >= now());
+    IF NOT FOUND THEN
+      SELECT nombre, disponible INTO v_nombre, v_disponible FROM cupos WHERE tipo_entrada_id = p_tipos[i];
+      RAISE EXCEPTION USING ERRCODE = 'P0001', MESSAGE = coalesce(format('No hay cupos suficientes de %s: quedan %s', v_nombre, v_disponible), 'Tipo de entrada no disponible');
+    END IF;
+    INSERT INTO reserva_items VALUES (v_id, p_tipos[i], p_cantidades[i]);
+  END LOOP;
+  RETURN QUERY SELECT r.id, r.estado, r.expira_en FROM reservas r WHERE r.id = v_id;
+END $$;
 `);
 
 const app = await crearApp('inventory', 'Disponibilidad, reservas temporales y liberación automática');
@@ -77,27 +104,15 @@ app.post('/reservations', {
 }, async (req, reply) => {
   const { eventoId, items } = req.body;
   if (new Set(items.map((i) => i.tipoEntradaId)).size !== items.length) throw error(400, 'Tipo de entrada repetido');
-  const reserva = await tx(db, async (c) => {
-    // Primero se inserta la reserva y al final se descuenta: el bloqueo de la fila de cupos dura solo hasta el COMMIT
-    const { rows: [r] } = await c.query(`INSERT INTO reservas (usuario_id, evento_id, expira_en) VALUES ($1, $2, now() + interval '${RESERVA_MINUTOS} minutes') RETURNING id, estado, expira_en AS "expiraEn"`, [req.usuario.id, eventoId]);
-    for (const i of items) await c.query('INSERT INTO reserva_items VALUES ($1, $2, $3)', [r.id, i.tipoEntradaId, i.cantidad]).catch(() => {
-      throw error(409, 'Tipo de entrada no disponible');
-    });
-    for (const i of items) {
-      // RN02: se comprueba y se descuenta en la misma sentencia; con compras simultáneas solo pasa quien alcanza cupo
-      const { rowCount } = await c.query(`
-        UPDATE cupos SET disponible = disponible - $2
-         WHERE tipo_entrada_id = $1 AND evento_id = $3 AND activo AND disponible >= $2
-           AND (venta_desde IS NULL OR venta_desde <= now()) AND (venta_hasta IS NULL OR venta_hasta >= now())`, [i.tipoEntradaId, i.cantidad, eventoId]);
-      if (!rowCount) {
-        const { rows: [cupo] } = await c.query('SELECT nombre, disponible FROM cupos WHERE tipo_entrada_id = $1', [i.tipoEntradaId]);
-        throw Object.assign(error(409, cupo ? `No hay cupos suficientes de ${cupo.nombre}: quedan ${cupo.disponible}` : 'Tipo de entrada no disponible'), { disponible: cupo?.disponible ?? 0 });
-      }
-    }
+  try {
+    const { rows: [r] } = await db.query('SELECT id, estado, expira_en AS "expiraEn" FROM reservar($1, $2, $3::uuid[], $4::int[], $5)',
+      [req.usuario.id, eventoId, items.map((i) => i.tipoEntradaId), items.map((i) => i.cantidad), RESERVA_MINUTOS]);
+    reply.code(201);
     return r;
-  });
-  reply.code(201);
-  return reserva;
+  } catch (e) {
+    if (e.code === 'P0001') throw error(409, e.message);
+    throw e;
+  }
 });
 
 const RESERVA = `
