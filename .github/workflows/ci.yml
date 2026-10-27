@@ -1,4 +1,4 @@
-name: CI
+name: CI/CD
 
 on:
   push:
@@ -9,17 +9,20 @@ on:
 permissions:
   contents: read
 
+# En main no se cancela una ejecución a medias: podría cortar un despliegue
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Las acciones de terceros van fijadas por SHA del commit, no por tag: un tag se puede reapuntar
+# (así ocurrió con trivy-action en 2026). El comentario indica la versión.
 jobs:
   calidad:
     name: Lint y pruebas unitarias
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with: { node-version: 22, cache: npm }
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
@@ -30,11 +33,12 @@ jobs:
     name: Escaneo de secretos (gitleaks)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
 
   imagenes:
     name: Imagen ${{ matrix.servicio }} + Trivy
@@ -45,7 +49,7 @@ jobs:
       matrix:
         servicio: [auth, catalog, inventory, orders, payment-sim, tickets, checkin, notifications, reports, pwa]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
       - name: Construir imagen
         run: |
           if [ "${{ matrix.servicio }}" = "pwa" ]; then
@@ -54,7 +58,7 @@ jobs:
             docker build -f infra/Dockerfile.servicio --build-arg SERVICIO=${{ matrix.servicio }} -t plataforma/${{ matrix.servicio }}:${{ github.sha }} .
           fi
       - name: Escanear con Trivy (falla con CRITICAL)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: plataforma/${{ matrix.servicio }}:${{ github.sha }}
           severity: CRITICAL
@@ -66,8 +70,8 @@ jobs:
     needs: calidad
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with: { node-version: 22 }
       - run: node scripts/generar-env.mjs
       - run: docker compose up -d --build --wait
@@ -75,28 +79,47 @@ jobs:
       - if: failure()
         run: docker compose logs --tail=80
 
-  # Preparado pero sin ejecutar: requiere los secretos AWS_ROLE_ARN y EC2_INSTANCE_ID, y el .env ya creado en el servidor.
+  # CD: cada push a main que pasa todos los controles se despliega solo en el EC2.
+  # Sin claves de AWS guardadas: OIDC entrega credenciales temporales al entorno "produccion".
+  # La clave SSH de despliegue tiene un comando forzado en el servidor: solo puede recibir el código y reconstruir.
   desplegar:
     name: Desplegar en EC2
-    if: github.event_name == 'workflow_dispatch' && vars.DESPLIEGUE_HABILITADO == 'true'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.EC2_INSTANCE_ID != ''
     needs: [imagenes, e2e, secretos]
     runs-on: ubuntu-latest
+    environment:
+      name: produccion
+      url: https://${{ vars.DOMINIO }}
+    concurrency: { group: despliegue-produccion, cancel-in-progress: false }
     permissions:
       contents: read
       id-token: write
+    env:
+      INSTANCIA: ${{ vars.EC2_INSTANCE_ID }}
+      DOMINIO: ${{ vars.DOMINIO }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
-      - name: Copiar código y levantar con docker compose (SSH por EC2 Instance Connect Endpoint)
+      - name: Enviar el commit al servidor y reconstruir
         env:
-          INSTANCIA: ${{ secrets.EC2_INSTANCE_ID }}
           SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.EC2_KNOWN_HOSTS }}
         run: |
-          install -m 600 /dev/null clave.pem && printf '%s\n' "$SSH_KEY" > clave.pem
-          SSH="ssh -i clave.pem -o StrictHostKeyChecking=accept-new -o ProxyCommand='aws ec2-instance-connect open-tunnel --instance-id $INSTANCIA' ubuntu@$INSTANCIA"
-          git archive HEAD | eval "$SSH 'tar -x -C /opt/plataforma-eventos'"
-          eval "$SSH 'cd /opt/plataforma-eventos && docker compose up -d --build --remove-orphans'"
-          rm -f clave.pem
+          install -d -m 700 ~/.ssh
+          install -m 600 /dev/null ~/.ssh/despliegue && printf '%s\n' "$SSH_KEY" > ~/.ssh/despliegue
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          git archive HEAD | ssh -i ~/.ssh/despliegue -o StrictHostKeyChecking=yes \
+            -o "ProxyCommand=aws ec2-instance-connect open-tunnel --instance-id $INSTANCIA" "ubuntu@$INSTANCIA"
+          rm -f ~/.ssh/despliegue
+      - name: Comprobar que la aplicación responde
+        run: |
+          for i in $(seq 1 36); do
+            if curl -fsS -o /dev/null "https://$DOMINIO/" && curl -fsS -o /dev/null "https://$DOMINIO/api/catalog/events"; then
+              echo "En línea: https://$DOMINIO"; exit 0
+            fi
+            sleep 5
+          done
+          echo "La aplicación no respondió después del despliegue"; exit 1

@@ -11,8 +11,9 @@ const evento = await crearEvento(org, [{ nombre: 'General', precio: 5, cupo: CUP
 const tipo = evento.tipos[0];
 const tokens = Array.from({ length: USUARIOS }, () => tokenDePrueba(crypto.randomUUID()));
 
-// Calentamiento: abre las 200 conexiones antes de medir, para que el p95 refleje la reserva y no el handshake TCP del cliente
-await Promise.all(tokens.map(() => fetch(`${URL.inventory}/health`).then((r) => r.text())));
+// Calentamiento: abre las 200 conexiones HTTP y las del pool de Postgres antes de medir, para que el p95
+// refleje la reserva y no los handshakes TCP y SCRAM de un servicio recién arrancado
+await Promise.all(tokens.map(() => fetch(`${URL.inventory}/availability/${evento.id}`).then((r) => r.text())));
 
 const inicio = Date.now();
 const respuestas = await Promise.all(tokens.map(async (token) => {
