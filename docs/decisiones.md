@@ -53,7 +53,7 @@ Código compartido en `packages/common`: app HTTP, outbox, consumidor idempotent
 
 ## ADR-005 · Sesión: token de acceso en memoria y renovación en cookie HttpOnly
 - **Decisión:** JWT EdDSA de 15 min que solo vive en memoria de la PWA. El token de renovación es rotativo, va en una cookie `HttpOnly; Secure; SameSite=Strict` y se guarda en la base como hash. Si un token ya usado reaparece, se cierran todas las sesiones del usuario.
-- **Consecuencia:** un XSS no puede leer tokens guardados. Tras 5 intentos fallidos la cuenta se bloquea 15 min (`MAX_INTENTOS`). El BPMN 01 decía 3; se unifica en 5 y es configurable.
+- **Consecuencia:** un XSS no puede leer tokens guardados. Tras 3 intentos fallidos la cuenta se bloquea 15 min (`MAX_INTENTOS`), igual que en el BPMN 01.
 
 ## ADR-006 · QR firmado con Ed25519 y verificación sin conexión con WebCrypto
 - **Decisión:** el QR es `base64url(payload).base64url(firma)`. Solo `tickets` tiene la clave privada. `checkin` y la PWA verifican con la pública, y la PWA lo hace con WebCrypto, sin librerías.

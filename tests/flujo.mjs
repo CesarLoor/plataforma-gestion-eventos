@@ -82,9 +82,9 @@ comprobar((await http('GET', `${URL.tickets}/me/tickets`, { token: `${ana.slice(
 const correo = `bloqueo-${Date.now()}@prueba.ec`;
 await http('POST', `${URL.auth}/register`, { body: { nombre: 'Bloqueo', correo, password: 'una-clave-larga-1' } });
 let ultimo;
-for (let i = 0; i < 5; i++) ultimo = await http('POST', `${URL.auth}/login`, { body: { correo, password: 'incorrecta' } });
+for (let i = 0; i < 3; i++) ultimo = await http('POST', `${URL.auth}/login`, { body: { correo, password: 'incorrecta' } });
 const correcta = await http('POST', `${URL.auth}/login`, { body: { correo, password: 'una-clave-larga-1' } });
-comprobar(ultimo.status === 423 && correcta.status === 423, 'RNF05: 5 intentos fallidos bloquean la cuenta, incluso con la clave correcta');
+comprobar(ultimo.status === 423 && correcta.status === 423, 'RNF05: 3 intentos fallidos bloquean la cuenta, incluso con la clave correcta');
 
 // RF16: comprobante por correo
 const correos = await esperar('comprobante en Mailpit', async () => {

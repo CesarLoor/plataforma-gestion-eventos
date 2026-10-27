@@ -21,7 +21,7 @@ Cada una trae mi recomendación. Si no dices nada, uso la recomendada.
 | D1 | Broker de mensajes | **NATS con JetStream** | Un solo binario liviano para el EC2; JetStream da persistencia, consumidores durables y descarte de duplicados por `Nats-Msg-Id` (RNF14) |
 | D2 | Proxy inverso | **Traefik v3** (no Caddy) | Trae límite de peticiones y cabeceras de seguridad incluidos. Caddy necesita compilar un plugin para el rate limit |
 | D3 | Versión de Node | **Node 22 LTS** (no Node 20) | Node 20 dejó de tener soporte en abril de 2026 y Trivy lo marcaría. Node 22 tiene soporte hasta abril de 2027, más allá del cierre del proyecto, y es la versión instalada en tu equipo |
-| D4 | Intentos fallidos antes del bloqueo | **5** (como dice el prompt) | El BPMN `01-registro-y-autenticacion` y el documento de procesos dicen **3**. Hay que dejar uno solo. Si eliges 3, se cambia una variable de entorno |
+| D4 | Intentos fallidos antes del bloqueo | **3** (decidido) | Coincide con el BPMN `01-registro-y-autenticacion` y el documento de procesos. Es configurable con `MAX_INTENTOS` |
 | D5 | Confirmación de la reserva al pagar | **Comando síncrono** `orders → inventory` (idempotente) | La reserva tiene que confirmarse antes de emitir tickets. Una llamada interna atómica evita la carrera con el job de expiración sin inventar estados nuevos en RN11. Todo lo demás de la saga (tickets, correos, reportes) va por eventos. Es la única excepción al principio de "síncrono solo para consultas" |
 | D6 | Nombres de servicios | Usar los de la base (`auth`, `catalog`, `inventory`…) y dejar la equivalencia con los `ms-*` del documento de Bizagi (tabla en la sección 9) | Así el código sigue la arquitectura de referencia y el documento entregado sigue siendo válido |
 | D7 | Pasarela simulada | Contenedor propio `payment-sim` que hace el papel del pool externo "Pasarela de pago" | La tarjeta se escribe en la página de la pasarela, no en la PWA: los datos de tarjeta nunca pasan por nuestros servicios (RN09) |
@@ -118,7 +118,7 @@ Prefijo público: `https://localhost/api/<servicio>`. Rutas `/internal/*`: solo 
 | Método y ruta | Rol | Qué hace |
 |---|---|---|
 | `POST /register` | público | Crea un ASISTENTE u ORGANIZADOR. Contraseña ≥ 10 caracteres, hash con argon2id |
-| `POST /login` | público | Devuelve `accessToken` (15 min) y deja el refresh token en una cookie `HttpOnly; Secure; SameSite=Strict`. Tras 5 fallos bloquea 15 min. Rate limit en Traefik |
+| `POST /login` | público | Devuelve `accessToken` (15 min) y deja el refresh token en una cookie `HttpOnly; Secure; SameSite=Strict`. Tras 3 fallos bloquea 15 min. Rate limit en Traefik |
 | `POST /refresh` · `POST /logout` | sesión | Rota el refresh token o lo revoca |
 | `GET /me` | sesión | Perfil y rol |
 | `PATCH /users/:id/role` | ADMIN | Cambia el rol y lo registra en el log de acciones críticas (RN10) |
@@ -327,7 +327,7 @@ Cancelar un evento (P4, CU15, CU16): `evento.cancelado` → tickets invalida tod
 | Control | Cómo | Vulnerabilidad |
 |---|---|---|
 | Sin IDOR | Toda consulta de órdenes y tickets filtra por `usuario_id = sub del JWT`; si no es suyo devuelve `404`. Pruebas automáticas lo verifican | V1 |
-| Sesiones | JWT EdDSA de 15 min, refresh rotativo en cookie HttpOnly, bloqueo tras 5 fallos, rate limit en `/login` | V2 |
+| Sesiones | JWT EdDSA de 15 min, refresh rotativo en cookie HttpOnly, bloqueo tras 3 fallos, rate limit en `/login` | V2 |
 | Tickets | QR firmado + estado + ingreso único | V3 |
 | Concurrencia | Descuento atómico + prueba con 200 usuarios | V4 |
 | Entradas | Zod en cada ruta, SQL parametrizado, React escapa por defecto, CSP sin `unsafe-inline` | V5 |
@@ -346,7 +346,7 @@ Comparé `docs/procesos/*.bpmn` y `docs/entregables/03-tarea-1.1-procesos-e-invo
 
 | Tema | BPMN / documento de procesos | Base de conocimiento | Qué propongo |
 |---|---|---|---|
-| Intentos antes del bloqueo | 3 | 5 | D4: un solo valor, configurable |
+| Intentos antes del bloqueo | 3 | 5 | D4: se unifica en 3, como el BPMN |
 | Servicios | `ms-usuarios` y `ms-autenticacion` separados; `ms-eventos` y `ms-catalogo` separados; no hay servicio de reportes | `auth` y `catalog` unificados; existe `reports` | D6: equivalencia `ms-usuarios`/`ms-autenticacion` → `auth`, `ms-eventos`/`ms-catalogo` → `catalog`, `ms-reservas` → `inventory`, `ms-pagos` → `orders`, `ms-tickets` → `tickets`, `ms-notificaciones` → `notifications`, `ms-acceso` → `checkin` |
 | Roles | `ms-usuarios`: asistente u organizador | 4 roles (más ACCESO y ADMIN) | Se implementan los 4; el BPMN no los contradice, solo no los modela |
 | Publicar evento | Sin moderación del administrador; con vista previa y opción de guardar borrador | P1 incluye moderación | Prototipo como el BPMN (moderación fuera de alcance, según la sección 14) |

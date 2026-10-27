@@ -140,7 +140,7 @@ gunzip -c respaldo-AAAA-MM-DD.sql.gz | ssh eventos-ec2 'cd /opt/plataforma-event
 | El navegador muestra error de certificado | Los primeros minutos Traefik está pidiendo el certificado: `docker compose logs traefik \| grep -i acme` |
 | Un servicio aparece `unhealthy` | `docker compose logs <servicio>`; en el primer arranque esperan a que Postgres termine de crear las bases |
 | El login responde 429 | El límite de 5 intentos por minuto por IP; espera un minuto |
-| La cuenta dice "bloqueada" | 5 contraseñas incorrectas seguidas: se desbloquea sola en 15 min |
+| La cuenta dice "bloqueada" | 3 contraseñas incorrectas seguidas: se desbloquea sola en 15 min |
 | Disco lleno | `docker system prune -af` (borra imágenes viejas; no toca los volúmenes de datos) |
 
 ## 9. Costos

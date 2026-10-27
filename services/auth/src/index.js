@@ -5,7 +5,7 @@ import cookie from '@fastify/cookie';
 import { SignJWT } from 'jose';
 import { crearApp, crearDb, crearBus, migrar, tx, encolar, requiere, error, env, clavePrivada, iniciar, conId } from '@plataforma/common';
 
-const MAX_INTENTOS = Number(env('MAX_INTENTOS', 5));
+const MAX_INTENTOS = Number(env('MAX_INTENTOS', 3));
 const BLOQUEO_MIN = 15;
 const ROLES = ['ASISTENTE', 'ORGANIZADOR', 'ACCESO', 'ADMIN'];
 const privada = clavePrivada('AUTH_PRIVATE_KEY');

@@ -70,7 +70,7 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
 | Pagos | Un webhook repetido no duplica tickets ni correos (RNF14) |
 | Acceso a datos | Sin IDOR en órdenes, reservas y tickets (V1) |
 | Ingreso | Ingreso único; un QR alterado o de otro evento se rechaza (RN05, RNF07); la sincronización detecta duplicados (R10) |
-| Cuentas y servicios | Bloqueo tras 5 intentos fallidos (RNF05); las rutas internas requieren token de servicio (V6) |
+| Cuentas y servicios | Bloqueo tras 3 intentos fallidos (RNF05); las rutas internas requieren token de servicio (V6) |
 
 ## Trazabilidad
 
@@ -91,7 +91,7 @@ npm run pruebas                 # dentro de Docker: concurrencia (200 usuarios, 
   - HTTPS con HSTS, CSP estricta y `X-Content-Type-Options`.
   - Límite de peticiones: login y registro, 5 por minuto; reservas, 20 por minuto.
   - Las rutas `/internal` responden 403 desde afuera.
-- **Sesiones:** JWT EdDSA de 15 min que vive solo en memoria. La renovación usa una cookie HttpOnly rotativa y detecta si un token se reutiliza. La cuenta se bloquea tras 5 intentos fallidos.
+- **Sesiones:** JWT EdDSA de 15 min que vive solo en memoria. La renovación usa una cookie HttpOnly rotativa y detecta si un token se reutiliza. La cuenta se bloquea tras 3 intentos fallidos.
 - **Datos:**
   - Cada servicio usa su propia base y su propio usuario de Postgres.
   - Las consultas son parametrizadas y cada ruta valida con JSON Schema, descartando los campos que no declara.
