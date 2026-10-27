@@ -17,7 +17,7 @@ AMI="$(aws ssm get-parameter --name /aws/service/canonical/ubuntu/server/24.04/s
 # Clave SSH (la privada queda solo en este equipo)
 if [ ! -f "$ARCHIVO_CLAVE" ]; then
   mkdir -p "$(dirname "$ARCHIVO_CLAVE")"
-  aws ec2 create-key-pair --key-name "$CLAVE" --key-type ed25519 --query KeyMaterial --output text > "$ARCHIVO_CLAVE"
+  aws ec2 create-key-pair --key-name "$CLAVE" --key-type ed25519 --query KeyMaterial --output text | tr -d '\r' > "$ARCHIVO_CLAVE"  # el CLI en Windows escribe CRLF y OpenSSH lo rechaza
   chmod 600 "$ARCHIVO_CLAVE"
 fi
 
