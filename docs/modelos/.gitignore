@@ -1,0 +1,3 @@
+# Copias de respaldo que PowerDesigner crea al guardar
+*.pdb
+*.oob
