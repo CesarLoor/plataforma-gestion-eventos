@@ -107,24 +107,11 @@ La plataforma dispone de eventos de ejemplo para explorar sus funcionalidades:
 
 - 🎷 **Noche de Jazz en La Ronda** — Quito. Evento con disponibilidad de entradas cercana a agotarse.
 - 🍽️ **Feria Gastronómica del Valle** — Sangolquí.
+- 🎶 **Festival Malecón Sonoro** — Guayaquil. Evento agotado.
 
----
+El código de descuento `ESPE10` aplica un 10 %.
 
-<div align="center">
-
-### 🎟️ Aforo
-
-**Plataforma de Gestión de Eventos**
-
-*Proyecto académico · Ingeniería de Software · ESPE*
-
-</div>
-
-- Festival Malecón Sonoro (Guayaquil), agotado.
-
-El código `ESPE10` da un 10 % de descuento.
-
-### Tarjetas de la pasarela simulada
+### Tarjetas de prueba de pago
 
 | Tarjeta | Resultado |
 |---|---|
@@ -221,3 +208,15 @@ Cada vulnerabilidad identificada (V1 a V8) tiene su control, alineado con el **O
 | [`docs/operacion.md`](docs/operacion.md) | Servidor EC2: acceso, encendido, despliegue, respaldos y costos |
 | [`docs/procesos/`](docs/procesos/LEEME.md) | BPMN 2.0 y modelos de Bizagi |
 | [`docs/entregables/`](docs/entregables/) | PDF de las actividades entregadas |
+
+---
+
+<div align="center">
+
+### 🎟️ Aforo
+
+**Plataforma de Gestión de Eventos**
+
+*Proyecto académico · Ingeniería de Software · ESPE*
+
+</div>
