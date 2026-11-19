@@ -2,6 +2,8 @@
 
 Runbook del servidor del proyecto. Los comandos `aws` necesitan el AWS CLI configurado (`aws configure`) con un usuario IAM con permisos de EC2.
 
+> Para probar o desarrollar no hace falta el servidor: el sistema completo se levanta en local con `npm run env` y `docker compose up -d --build` (ver README, *Levantar en local*). Mantén la instancia apagada y enciéndela solo para la demo pública o para probar desde el celular.
+
 ## 1. Datos del servidor
 
 | Dato | Valor |

@@ -1,10 +1,15 @@
 # Usuarios y pantallas del prototipo
 
-Aplicación: **https://34-230-232-119.sslip.io**. Funciona en celular y en computadora, y se puede instalar como app (PWA).
+Funciona en celular y en computadora, y se puede instalar como app (PWA). Hay dos formas de probarla:
+
+| Entorno | Dirección | Cuándo usarlo |
+|---|---|---|
+| Local | **https://localhost** | Siempre disponible: se levanta en tu equipo con Docker (ver README, *Levantar en local*). Solo desde ese equipo |
+| Servidor | **https://34-230-232-119.sslip.io** | Demo pública y pruebas desde el celular. Solo responde si la instancia EC2 está encendida (`docs/operacion.md`, sección 4) |
 
 ## 1. Usuarios de prueba
 
-Todos comparten la contraseña `SEED_PASSWORD` del `.env` del servidor (ver `docs/operacion.md`, sección 2).
+Todos comparten la contraseña `SEED_PASSWORD` del `.env` del entorno que uses: en local, el `.env` de tu equipo (`grep SEED_PASSWORD .env`); en el servidor, el suyo (`docs/operacion.md`, sección 2).
 
 | Rol | Correo | Al iniciar sesión entra a |
 |---|---|---|
@@ -12,7 +17,7 @@ Todos comparten la contraseña `SEED_PASSWORD` del `.env` del servidor (ver `doc
 | Asistente 2 | `asistente2@eventos.ec` | Catálogo |
 | Organizador | `organizador@eventos.ec` | Panel |
 | Personal de acceso | `acceso@eventos.ec` | Control de acceso |
-| Administración | `admin@eventos.ec` | Panel |
+| Administración | `admin@eventos.ec` | Administración |
 
 Cualquiera puede **crear una cuenta** de asistente u organizador con **Entrar → Crear cuenta**. Los roles de acceso y administración no se pueden elegir al registrarse, para que nadie se dé esos permisos a sí mismo; solo un administrador los asigna.
 
@@ -66,9 +71,10 @@ Supervisa la plataforma.
 |---|---|
 | Todo lo del organizador sobre cualquier evento (panel, publicar, cancelar) | RF04, RF25 · CU13 |
 | Usar el control de acceso | RF21 · CU20 |
-| Cambiar el rol de una cuenta (por la API: `PATCH /api/auth/users/:id/role`); queda en la bitácora | RF03, RF28 · CU18, CU19 |
+| Buscar cuentas y cambiar su rol desde la pantalla **Administración**, con motivo obligatorio; nadie puede cambiar su propio rol y el cambio queda en la bitácora | RF03, RF28 · CU18, CU19 |
+| Ver todos los eventos y abrirlos en el panel | RF27 · CU17 |
 
-Pendiente para la siguiente etapa: pantalla de moderación (RF27) y pantalla de bitácora (RF28). Hoy las acciones críticas quedan en los logs del servidor.
+Pendiente para el sprint 4: pestañas Dispositivos (RF34, RF35), Incidencias (RF31–RF33) y Bitácora (RF28). Hoy las acciones críticas quedan en los logs del servidor.
 
 ## 3. Pantallas
 
@@ -86,6 +92,7 @@ En el celular la navegación está abajo; en la computadora, arriba, junto a la 
 | 5 | **Panel del organizador** | Organizador, admin | Selector de evento, vendidas sobre aforo, recaudado, % de aforo, ingresos, barras por tipo de entrada. Botones **Exportar CSV** y **Cancelar evento**. Se actualiza solo cada 10 segundos |
 | 5b | **Nuevo evento** | Organizador | Formulario del evento y sus tipos de entrada. **Guardar borrador** o **Publicar** |
 | 6 | **Control de acceso** | Acceso, admin | Indicador En línea o Sin conexión, cámara, resultado grande en color, campo para pegar el código, contadores de ingresos y pendientes, botones **Guardar lista** y **Sincronizar**, y la casilla **Simular sin conexión** para la demo |
+| 7 | **Administración** | Admin | Pestaña Usuarios y roles: buscador, cada cuenta con su rol o "Bloqueada", selector de rol y motivo. Pestaña Eventos: todos los eventos con su estado y acceso al panel |
 | — | **Cuenta** | Con sesión | Nombre, correo y rol. **Cerrar sesión** también invalida la sesión en el servidor |
 
 ### Tarjetas de prueba (pasarela simulada)

@@ -39,6 +39,8 @@ La solución está desarrollada mediante una arquitectura de **microservicios co
 
 ## 🚀 Levantar en local
 
+Para probar el sistema no hace falta el servidor de AWS: todo (servicios, bases, mensajería y correo) corre en tu equipo con Docker. El servidor EC2 solo se usa para la demo pública y puede estar apagado.
+
 ### 📋 Requisitos previos
 
 - 🐳 Docker instalado y en ejecución.
@@ -62,7 +64,24 @@ Genera el archivo `.env` con contraseñas y claves aleatorias e imprime la contr
 docker compose up -d --build
 ```
 
-Construye las imágenes e inicia los 9 servicios, la PWA, PostgreSQL, NATS, Traefik y Mailpit.
+Construye las imágenes e inicia los 9 servicios, la PWA, PostgreSQL, NATS, Traefik y Mailpit. La primera vez tarda unos minutos; revisa que todo esté `healthy` con `docker compose ps`.
+
+**3. Ver la contraseña de los usuarios semilla** (si no la anotaste en el paso 1)
+
+```bash
+grep SEED_PASSWORD .env          # PowerShell: Select-String SEED_PASSWORD .env
+```
+
+### ⏯️ Detener, retomar y reiniciar
+
+| Acción | Comando |
+|---|---|
+| Detener sin perder datos | `docker compose stop` |
+| Retomar | `docker compose up -d` |
+| Ver logs de un servicio | `docker compose logs -f <servicio>` |
+| Volver a cero (borra bases y datos de prueba) | `docker compose down -v` y luego `docker compose up -d --build` |
+
+No vuelvas a ejecutar `npm run env` sobre un `.env` existente: con `--force` cambia las contraseñas y las bases ya creadas dejan de aceptarlas. Si lo haces, borra también los datos con `docker compose down -v`.
 
 ### 🌐 Servicios disponibles
 
@@ -73,6 +92,17 @@ Construye las imágenes e inicia los 9 servicios, la PWA, PostgreSQL, NATS, Trae
 | 📘 Documentación OpenAPI de cada servicio | Comando siguiente |
 
 > ⚠️ **Nota:** En el entorno local, el certificado HTTPS es autofirmado. Acepta la advertencia de seguridad del navegador para acceder a la aplicación.
+
+> 💻 **Alcance local:** la app responde solo en `https://localhost`, desde el mismo equipo; cualquier otra dirección (por ejemplo, la IP de tu PC desde el celular) se redirige a `localhost`. Para el control de acceso usa la cámara del computador o pega el código del QR, y para el modo sin conexión marca **Simular sin conexión**. Probar desde el celular requiere el servidor (`docs/operacion.md`).
+
+#### Problemas frecuentes en local
+
+| Síntoma | Qué revisar |
+|---|---|
+| `docker compose up` dice que el puerto 80 o 443 está ocupado | Cierra lo que los use (IIS, Skype, otro proxy) o detén esos contenedores |
+| Un servicio queda `unhealthy` al primer arranque | Espera a que Postgres termine de crear las bases y ejecuta `docker compose up -d` otra vez |
+| La contraseña de los usuarios semilla no funciona | Es la del `.env` de **tu** equipo, no la del servidor |
+| No llegan correos | Se ven en Mailpit, http://localhost:8025; no se envían a buzones reales |
 
 ### 📘 Consultar la documentación OpenAPI
 
