@@ -141,13 +141,18 @@ app.post('/logout', async (req, reply) => {
 
 app.get('/me', { preHandler: requiere() }, async (req) => req.usuario);
 
+// Pantalla 7 · CU18 · RF03: lista de cuentas para el administrador
+app.get('/users', { preHandler: requiere('ADMIN') }, async () =>
+  (await db.query('SELECT id, nombre, correo, rol, bloqueado_hasta > now() AS bloqueado, creado_en FROM usuarios ORDER BY creado_en DESC LIMIT 500')).rows);
+
 app.patch('/users/:id/role', {
   preHandler: requiere('ADMIN'),
-  schema: { ...conId, body: { type: 'object', required: ['rol'], properties: { rol: { type: 'string', enum: ROLES } } } },
+  schema: { ...conId, body: { type: 'object', required: ['rol'], properties: { rol: { type: 'string', enum: ROLES }, motivo: { type: 'string', maxLength: 300 } } } },
 }, async (req) => {
+  if (req.params.id === req.usuario.id) throw error(400, 'No puedes cambiar tu propio rol');
   const { rows: [u] } = await db.query('UPDATE usuarios SET rol = $2 WHERE id = $1 RETURNING id, nombre, rol', [req.params.id, req.body.rol]);
   if (!u) throw error(404, 'Usuario no encontrado');
-  req.log.info({ accion: 'cambio_rol', adminId: req.usuario.id, usuarioId: u.id, rol: u.rol }, 'acción crítica'); // RN10
+  req.log.info({ accion: 'cambio_rol', adminId: req.usuario.id, usuarioId: u.id, rol: u.rol, motivo: req.body.motivo }, 'acción crítica'); // RN10
   return u;
 });
 

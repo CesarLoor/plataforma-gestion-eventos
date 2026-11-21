@@ -88,7 +88,7 @@ const MENUS = {
   ASISTENTE: [['catalogo', 'buscar', 'Explorar'], ['tickets', 'ticket', 'Mis tickets'], ['cuenta', 'persona', 'Cuenta']],
   ORGANIZADOR: [['catalogo', 'buscar', 'Explorar'], ['panel', 'panel', 'Panel'], ['cuenta', 'persona', 'Cuenta']],
   ACCESO: [['acceso', 'escaner', 'Acceso'], ['cuenta', 'persona', 'Cuenta']],
-  ADMIN: [['catalogo', 'buscar', 'Explorar'], ['panel', 'panel', 'Panel'], ['acceso', 'escaner', 'Acceso'], ['cuenta', 'persona', 'Cuenta']],
+  ADMIN: [['admin', 'escudo', 'Admin'], ['panel', 'panel', 'Panel'], ['acceso', 'escaner', 'Acceso'], ['cuenta', 'persona', 'Cuenta']],
   INVITADO: [['catalogo', 'buscar', 'Explorar'], ['tickets', 'ticket', 'Mis tickets'], ['login', 'persona', 'Entrar']],
 };
 

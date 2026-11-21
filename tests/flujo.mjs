@@ -75,6 +75,12 @@ const panel = await esperar('panel actualizado', async () => {
 });
 comprobar(panel.recaudado === 18, `RF25: panel con 2 vendidas, 2 ingresos y $18 recaudados (${panel.recaudado})`);
 comprobar((await http('GET', `${URL.reports}/events/${evento.id}/dashboard`, { token: otro })).status === 403, 'roles: un asistente no ve el panel (403)');
+comprobar((await http('GET', `${URL.auth}/users`, { token: org })).status === 403, 'RF03: solo el administrador lista las cuentas (403)');
+const admin = await login('admin@eventos.ec');
+const cuentas = (await http('GET', `${URL.auth}/users`, { token: admin })).datos;
+comprobar(Array.isArray(cuentas) && cuentas.some((u) => u.correo === 'acceso@eventos.ec') && !('hash' in cuentas[0]), 'RF03: el administrador lista las cuentas sin el hash de la contraseña');
+const yo = cuentas.find((u) => u.correo === 'admin@eventos.ec');
+comprobar((await http('PATCH', `${URL.auth}/users/${yo.id}/role`, { token: admin, body: { rol: 'ASISTENTE', motivo: 'prueba' } })).status === 400, 'RF03: el administrador no puede cambiar su propio rol (400)');
 
 // Seguridad de acceso
 comprobar((await http('GET', `${URL.inventory}/internal/reservations/${reserva.datos.id}`)).status === 403, 'V6: ruta interna sin token de servicio -> 403');

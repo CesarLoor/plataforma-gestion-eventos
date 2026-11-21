@@ -11,9 +11,10 @@ import Panel from './pantallas/Panel.jsx';
 import NuevoEvento from './pantallas/NuevoEvento.jsx';
 import Acceso from './pantallas/Acceso.jsx';
 import Cuenta from './pantallas/Cuenta.jsx';
+import Admin from './pantallas/Admin.jsx';
 
 // Pantallas que exigen un rol; sin sesión se va a iniciar sesión
-const PERMISOS = { pago: ['ASISTENTE'], orden: ['ASISTENTE'], panel: ['ORGANIZADOR', 'ADMIN'], acceso: ['ACCESO', 'ADMIN'], cuenta: null };
+const PERMISOS = { pago: ['ASISTENTE'], orden: ['ASISTENTE'], panel: ['ORGANIZADOR', 'ADMIN'], acceso: ['ACCESO', 'ADMIN'], admin: ['ADMIN'], cuenta: null };
 
 export default function App() {
   const [usuario, setUsuario] = useState(sesion());
@@ -45,6 +46,7 @@ export default function App() {
     panel: params[0] === 'nuevo' ? <NuevoEvento /> : <Panel />,
     acceso: <Acceso usuario={usuario} />,
     cuenta: <Cuenta usuario={usuario} />,
+    admin: <Admin usuario={usuario} />,
   };
 
   return (

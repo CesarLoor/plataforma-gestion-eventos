@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { entrar } from '../api.js';
 import { Alerta, Icono, ir } from '../comunes.jsx';
 
-const INICIO = { ASISTENTE: 'catalogo', ORGANIZADOR: 'panel', ACCESO: 'acceso', ADMIN: 'panel' };
+const INICIO = { ASISTENTE: 'catalogo', ORGANIZADOR: 'panel', ACCESO: 'acceso', ADMIN: 'admin' };
 
 // CU01 · RF01: registro e inicio de sesión; los mensajes de bloqueo los decide el servidor (RNF05)
 export default function Login() {
