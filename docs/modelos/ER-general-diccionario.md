@@ -484,3 +484,120 @@ Cada tabla indica su servicio, propósito, claves y columnas. La columna **Clave
 - Las relaciones entre servicios se marcan como **lógicas**; no se crean FK entre bases distintas. La consistencia se logra con la saga de compra, el patrón outbox y la idempotencia.
 - El modelo está trazado a requisitos: cada tabla indica los RF/RN que implementa en su propósito.
 
+
+## Tablas agregadas en la versión 1.0 (diseño)
+
+Se agregaron al modelo para cumplir RF02, RF28, RF30–RF35 de la especificación v1.0. Están en `ER-general.pdm` y en el PDM de su servicio, pero todavía no existen en PostgreSQL: se crean en el sprint indicado. También se agregaron dos columnas a tablas existentes:
+
+| Tabla | Columna | Tipo | Nulo | Por defecto | Descripción | Sprint |
+|---|---|---|---|---|---|---|
+| `usuarios` | `estado` | `text` | No | `'PENDIENTE'` | `PENDIENTE` hasta verificar el correo, luego `ACTIVA` (RF02). | 2 |
+| `ingresos` | `dispositivo_id` | `uuid` | Sí | — | Dispositivo que registró el ingreso; FK → `dispositivos.id` (RF34). | 4 |
+
+### `verificaciones`
+
+**Servicio:** `auth` · **Sprint:** 2  
+**Propósito:** enlaces de un solo uso para verificar el correo (24 h) o recuperar la contraseña (30 min) (RF02, RN-11)
+
+**Clave primaria:** `id` · **Claves foráneas:** `usuario_id` → `usuarios.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador. |
+| `usuario_id` | `uuid` | No | FK | — | Cuenta a verificar. |
+| `tipo` | `text` | No | — | — | `VERIFICACION` \| `RECUPERACION` |
+| `hash_token` | `text` | No | — | — | Hash del token enviado por correo; nunca se guarda el token. |
+| `expira_en` | `timestamptz` | No | — | — | Vencimiento del enlace. |
+| `usado_en` | `timestamptz` | Sí | — | — | Momento de uso; un enlace usado no vuelve a servir. |
+
+### `bitacora`
+
+**Servicio:** `auth` · **Sprint:** 5  
+**Propósito:** registro de solo lectura de acciones críticas (RF28, RNF-13)
+
+**Clave primaria:** `id` · **Claves foráneas:** `usuario_id` → `usuarios.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador. |
+| `usuario_id` | `uuid` | No | FK | — | Quién ejecutó la acción. |
+| `rol` | `text` | No | — | — | Rol con el que actuó. |
+| `accion` | `text` | No | — | — | `cambio_rol`, `cambio_aforo`, `reembolso`, `invalidar_ticket`, `reasignar_dispositivo`, `resolver_incidencia`… |
+| `entidad` | `text` | No | — | — | Tipo de objeto afectado. |
+| `entidad_id` | `uuid` | No | — | — | Objeto afectado. |
+| `motivo` | `text` | No | — | — | Motivo obligatorio. |
+| `detalle` | `jsonb` | Sí | — | — | Valores antes y después. |
+| `creado_en` | `timestamptz` | No | — | `now()` | Fecha y hora. |
+
+### `dispositivos`
+
+**Servicio:** `checkin` · **Sprint:** 4  
+**Propósito:** celulares autorizados para validar un evento (RF35)
+
+**Clave primaria:** `id` · **Claves foráneas:** `usuario_id` → `usuarios.id` (0..*, lógica); `evento_id` → `eventos.id` (0..*, lógica)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador del dispositivo. |
+| `evento_id` | `uuid` | No | FK | — | Evento donde valida. |
+| `usuario_id` | `uuid` | No | FK | — | Personal de acceso responsable. |
+| `nombre` | `text` | No | — | — | Nombre visible (Puerta norte 1). |
+| `puerta` | `text` | No | — | — | Puerta o zona asignada. |
+| `estado` | `text` | No | — | `'ACTIVO'` | `ACTIVO` \| `REVOCADO`; uno revocado no sincroniza. |
+| `registrado_en` | `timestamptz` | No | — | `now()` | Fecha de registro. |
+| `revocado_en` | `timestamptz` | Sí | — | — | Fecha de revocación. |
+
+### `asignaciones`
+
+**Servicio:** `checkin` · **Sprint:** 4  
+**Propósito:** cada ticket asignado a un único dispositivo para validar sin conexión; la PK sobre `tid` impide asignarlo a dos (RF34, RN-06)
+
+**Clave primaria:** `tid` · **Claves foráneas:** `tid` → `tickets.id` (0..1, lógica); `dispositivo_id` → `dispositivos.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `tid` | `uuid` | No | PK, FK | — | Ticket asignado. |
+| `dispositivo_id` | `uuid` | No | FK | — | Único dispositivo que puede aceptarlo sin conexión. |
+| `asignado_en` | `timestamptz` | No | — | `now()` | Fecha de asignación o reasignación. |
+
+### `incidencias`
+
+**Servicio:** `checkin` · **Sprint:** 4  
+**Propósito:** incidencias de puerta y conflictos de sincronización con su escalamiento (RF31, RF33, RN-07, RN-12)
+
+**Clave primaria:** `id` · **Claves foráneas:** `tid` → `tickets.id` (0..*, lógica); `dispositivo_id` → `dispositivos.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador. |
+| `evento_id` | `uuid` | No | — | — | Evento. |
+| `tid` | `uuid` | Sí | FK | — | Ticket involucrado, si hay. |
+| `dispositivo_id` | `uuid` | Sí | FK | — | Dispositivo que la originó, si hay. |
+| `tipo` | `text` | No | — | — | `PUERTA` \| `CONFLICTO_SINCRONIZACION` \| `FRAUDE` |
+| `descripcion` | `text` | No | — | — | Qué pasó. |
+| `reportada_por` | `uuid` | No | — | — | Usuario que la registró (o el sistema). |
+| `asignada_a` | `text` | No | — | — | `ACCESO` \| `ORGANIZADOR` \| `ADMIN` según RN-12. |
+| `estado` | `text` | No | — | `'ABIERTA'` | `ABIERTA` \| `ESCALADA` \| `RESUELTA` |
+| `resolucion` | `text` | Sí | — | — | Decisión tomada. |
+| `creada_en` | `timestamptz` | No | — | `now()` | Fecha de registro. |
+| `resuelta_en` | `timestamptz` | Sí | — | — | Fecha de cierre. |
+
+### `reclamos`
+
+**Servicio:** `orders` · **Sprint:** 4  
+**Propósito:** solicitudes de reembolso; si el organizador no responde en 5 días hábiles pasan al administrador (RF30, RF33, RN-09)
+
+**Clave primaria:** `id` · **Claves foráneas:** `orden_id` → `ordenes.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador. |
+| `orden_id` | `uuid` | No | FK | — | Orden reclamada. |
+| `usuario_id` | `uuid` | No | — | — | Asistente que reclama. |
+| `motivo` | `text` | No | — | — | `CANCELACION` \| `CAMBIO_FECHA_LUGAR` \| `COBRO_ERROR` \| `NO_PUDO_ENTRAR` |
+| `porcentaje` | `int` | Sí | — | — | Porcentaje a reembolsar (1-100). |
+| `estado` | `text` | No | — | `'PENDIENTE'` | `PENDIENTE` \| `APROBADO` \| `RECHAZADO` \| `ESCALADO` |
+| `vence_en` | `timestamptz` | No | — | — | Creación + 5 días hábiles; después escala. |
+| `resuelto_por` | `uuid` | Sí | — | — | Organizador o administrador que decidió. |
+| `creado_en` | `timestamptz` | No | — | `now()` | Fecha del reclamo. |
+| `resuelto_en` | `timestamptz` | Sí | — | — | Fecha de la decisión. |

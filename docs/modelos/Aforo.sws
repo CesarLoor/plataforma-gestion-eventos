@@ -12,8 +12,8 @@
 		<Model ID="{1DEAC4DC-BAA5-4D9D-92D1-486F0A732C5E}" Loaded="No" Name="ER-checkin" Type="{CDE44E21-9669-11D1-9914-006097355D9B}" URL="ER-checkin.pdm"/>
 		<Model ID="{2AF43949-E133-4526-B2CF-9140EE4B5B3C}" Loaded="No" Name="ER-reports" Type="{CDE44E21-9669-11D1-9914-006097355D9B}" URL="ER-reports.pdm"/>
 		<Model ID="{AADFC65C-90F8-46CB-9C84-06CD61729AD6}" Loaded="No" Name="ER-comun" Type="{CDE44E21-9669-11D1-9914-006097355D9B}" URL="ER-comun.pdm"/>
-		<Model ID="{5D2BE5BD-3757-42F6-AE5B-AC0823D77547}" Loaded="No" Name="ER general" Type="{CDE44E21-9669-11D1-9914-006097355D9B}" URL="ER-general.pdm"/>
-		<Model ID="{4A1C1585-ECBF-4BC6-AE20-6C53B4954A8D}" Loaded="No" Name="Aforo-UML" Type="{18112060-1A4B-11D1-83D9-444553540000}" URL="Aforo-UML.oom"/>
+		<Model ID="{5D2BE5BD-3757-42F6-AE5B-AC0823D77547}" Loaded="No" Name="ER-general" Type="{CDE44E21-9669-11D1-9914-006097355D9B}" URL="ER-general.pdm"/>
+		<Model ID="{1687200B-23EE-4E20-B084-1EA11409997D}" Loaded="No" Name="Aforo-UML" Type="{18112060-1A4B-11D1-83D9-444553540000}" URL="Aforo-UML.oom"/>
 	</Local>
 	<BrowserModule Name="Repository"/>
 </Workspace>
