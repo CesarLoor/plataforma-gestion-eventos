@@ -17,7 +17,7 @@
 
 La columna **Clave** resume PK, FK y AK. Las FK se detallan debajo de cada tabla; el tipo de relación (`física` o `lógica`) indica si cruza o no la base de datos de un servicio.
 
-**Roles y personas.** `usuarios` representa la cuenta y la persona (nombre y correo). El rol es la columna `usuarios.rol`, validada con `CHECK` sobre `ASISTENTE`, `ORGANIZADOR`, `ACCESO` y `ADMIN`; no es una tabla aparte. El nombre del asistente se copia en `tickets.titular` como snapshot del comprobante.
+**Roles y personas.** `personas` guarda los datos personales y `usuarios` solo las credenciales (1 persona : 0..1 usuario). Los roles son la tabla `roles` y se asignan mediante `usuario_roles` (N:M, sin parejas repetidas). La vista `cuentas` une las tres para el inicio de sesión; por ahora la aplicación usa un rol vigente por usuario. El nombre del asistente se copia en `tickets.titular` como snapshot del comprobante.
 
 **Réplica de checkin.** `checkin` mantiene una réplica local de `tickets` para operar sin conexión. En este modelo consolidado, `tickets` e `ingresos` se muestran juntos y la relación se marca como lógica.
 
@@ -30,27 +30,85 @@ La columna **Clave** resume PK, FK y AK. Las FK se detallan debajo de cada tabla
 
 ## Tablas
 
-Se incluyen las 16 tablas de negocio del ER general. Las tablas técnicas `outbox` y `mensajes_procesados` viven en `ER-comun.pdm` y no forman parte de este diccionario.
+Se incluyen las 19 tablas de negocio del ER general. Las tablas técnicas `outbox` y `mensajes_procesados` viven en `ER-comun.pdm` y no forman parte de este diccionario.
 
-### `usuarios`
+### `personas`
 
-**Servicio:** `auth`  
-**Propósito:** cuentas, roles y bloqueo por intentos fallidos (RF01, RF03)
+**Servicio:** `auth` · **Laboratorio 01**  
+**Propósito:** datos personales, independientes de las credenciales; una persona puede no tener cuenta (RF03)
 
 **Clave primaria:** `id`
 
-**Claves únicas:** `correo` (AK_usuarios_1)
+**Claves únicas:** `identificacion` (AK_personas_1; admite nulos: el registro web no la pide)
 
 | Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
 |---|---|---|---|---|---|
 | `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador único del registro. |
-| `nombre` | `text` | No | — | — | Nombre. |
-| `correo` | `text` | No | AK | — | único; índice sobre lower(correo) |
+| `nombres` | `text` | No | — | — | Nombres (o razón social de un organizador). |
+| `apellidos` | `text` | Sí | — | — | Apellidos. |
+| `identificacion` | `text` | Sí | AK | — | Cédula, RUC o pasaporte. |
+| `correo` | `text` | No | — | — | Correo de contacto. |
+| `telefono` | `text` | Sí | — | — | Teléfono de contacto. |
+| `estado` | `boolean` | No | — | `true` | Activa o inactiva. |
+| `creado_en` | `timestamptz` | No | — | `now()` | Fecha y hora de creación. |
+
+### `usuarios`
+
+**Servicio:** `auth`  
+**Propósito:** credenciales de acceso y bloqueo por intentos fallidos (RF01, RNF05)
+
+**Clave primaria:** `id`
+
+**Claves únicas:** `correo` (AK_usuarios_1), `persona_id` (AK_usuarios_2)
+
+**Claves foráneas:**
+
+- `persona_id` → `personas.id` (0..1, física): cada usuario corresponde a una sola persona y no la comparte
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador único del registro. |
+| `persona_id` | `uuid` | No | FK, AK | — | Persona dueña de la cuenta. |
+| `correo` | `text` | No | AK | — | Credencial de inicio de sesión; índice único sobre lower(correo). |
 | `hash` | `text` | No | — | — | hash bcrypt de la contraseña |
-| `rol` | `text` | No | — | — | ASISTENTE \| ORGANIZADOR \| ACCESO \| ADMIN |
 | `intentos_fallidos` | `int` | No | — | `0` | Intentos de inicio de sesión fallidos. |
 | `bloqueado_hasta` | `timestamptz` | Sí | — | — | Fecha y hora hasta la que la cuenta está bloqueada. |
+| `estado` | `boolean` | No | — | `true` | Una cuenta inactiva no puede iniciar sesión ni renovar el token. |
 | `creado_en` | `timestamptz` | No | — | `now()` | Fecha y hora de creación. |
+
+### `roles`
+
+**Servicio:** `auth`  
+**Propósito:** catálogo de roles (RF03); semilla: ASISTENTE, ORGANIZADOR, ACCESO, ADMIN
+
+**Clave primaria:** `id` · **Claves únicas:** `nombre` (AK_roles_1)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador único del registro. |
+| `nombre` | `text` | No | AK | — | Nombre del rol. |
+| `descripcion` | `text` | Sí | — | — | Qué puede hacer el rol. |
+| `estado` | `boolean` | No | — | `true` | Un rol inactivo no otorga permisos. |
+
+### `usuario_roles`
+
+**Servicio:** `auth`  
+**Propósito:** resuelve la relación N:M entre usuarios y roles (RF03)
+
+**Clave primaria:** `id` · **Claves únicas:** `usuario_id, rol_id` (AK_usuario_roles_1)
+
+**Claves foráneas:**
+
+- `usuario_id` → `usuarios.id` (0..*, física)
+- `rol_id` → `roles.id` (0..*, física)
+
+| Campo | Tipo | Nulo | Clave | Por defecto | Descripción |
+|---|---|---|---|---|---|
+| `id` | `uuid` | No | PK | `gen_random_uuid()` | Identificador único del registro. |
+| `usuario_id` | `uuid` | No | FK, AK | — | Usuario. |
+| `rol_id` | `uuid` | No | FK, AK | — | Rol asignado. |
+| `asignado_en` | `timestamptz` | No | — | `now()` | Fecha de asignación. |
+| `estado` | `boolean` | No | — | `true` | Asignación vigente. |
 
 ### `sesiones`
 

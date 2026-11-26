@@ -102,7 +102,7 @@ Prefijo público: `https://<dominio>/api/<servicio>`. Las rutas `/internal/*` so
 
 | Servicio | Rutas principales | Requisitos |
 |---|---|---|
-| auth | `POST /register` · `POST /login` · `POST /refresh` · `POST /logout` · `GET /me` · `PATCH /users/:id/role` (admin) | RF01, RF03 |
+| auth | `POST /register` · `POST /login` · `POST /refresh` · `POST /logout` · `GET /me` · `PATCH /users/:id/role` (admin) · CRUD `/personas` (admin, [Laboratorio 01](laboratorio-01.md)) | RF01, RF03 |
 | catalog | `GET /events` (filtros) · `GET /events/:id` · `GET /mine` · `POST /events` · `POST /events/:id/publish` · `POST /events/:id/cancel` · `POST /events/:id/discounts` | RF04-RF06, RF13 |
 | inventory | `GET /availability/:id` · `POST /reservations` · `GET /reservations/:id` | RF07-RF10 |
 | orders | `POST /orders` · `GET /orders/:id` · `POST /orders/:id/retry` · `POST /webhooks/payment` | RF12, RF14, RF15 |

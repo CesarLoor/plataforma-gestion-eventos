@@ -11,26 +11,75 @@ const ROLES = ['ASISTENTE', 'ORGANIZADOR', 'ACCESO', 'ADMIN'];
 const privada = clavePrivada('AUTH_PRIVATE_KEY');
 const db = crearDb();
 
+// Identidad separada: persona (datos personales) 1:0..1 usuario (credenciales) N:M rol vía usuario_roles
 await migrar(db, `
+CREATE TABLE IF NOT EXISTS personas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombres text NOT NULL,
+  apellidos text,
+  identificacion text UNIQUE,
+  correo text NOT NULL,
+  telefono text,
+  estado boolean NOT NULL DEFAULT true,
+  creado_en timestamptz NOT NULL DEFAULT now());
 CREATE TABLE IF NOT EXISTS usuarios (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  nombre text NOT NULL,
+  persona_id uuid NOT NULL UNIQUE REFERENCES personas(id),
   correo text NOT NULL,
   hash text NOT NULL,
-  rol text NOT NULL CHECK (rol IN ('ASISTENTE','ORGANIZADOR','ACCESO','ADMIN')),
   intentos_fallidos int NOT NULL DEFAULT 0,
   bloqueado_hasta timestamptz,
+  estado boolean NOT NULL DEFAULT true,
   creado_en timestamptz NOT NULL DEFAULT now());
 CREATE UNIQUE INDEX IF NOT EXISTS usuarios_correo ON usuarios (lower(correo));
+CREATE TABLE IF NOT EXISTS roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL UNIQUE,
+  descripcion text,
+  estado boolean NOT NULL DEFAULT true);
+INSERT INTO roles (nombre, descripcion) VALUES
+  ('ASISTENTE', 'Compra entradas y consulta sus tickets'),
+  ('ORGANIZADOR', 'Publica y administra sus eventos'),
+  ('ACCESO', 'Valida tickets en la puerta'),
+  ('ADMIN', 'Administra cuentas y roles')
+ON CONFLICT (nombre) DO NOTHING;
+CREATE TABLE IF NOT EXISTS usuario_roles (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id uuid NOT NULL REFERENCES usuarios(id),
+  rol_id uuid NOT NULL REFERENCES roles(id),
+  asignado_en timestamptz NOT NULL DEFAULT now(),
+  estado boolean NOT NULL DEFAULT true,
+  UNIQUE (usuario_id, rol_id));
 CREATE TABLE IF NOT EXISTS sesiones (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id uuid NOT NULL REFERENCES usuarios(id),
   hash_token text NOT NULL UNIQUE,
   expira_en timestamptz NOT NULL,
   revocada boolean NOT NULL DEFAULT false);
+
+-- Bases creadas con el esquema anterior (usuarios.nombre y usuarios.rol): se migran una sola vez sin perder cuentas
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'usuarios' AND column_name = 'rol') THEN
+    INSERT INTO personas (id, nombres, correo) SELECT id, nombre, correo FROM usuarios;
+    ALTER TABLE usuarios ADD COLUMN persona_id uuid UNIQUE REFERENCES personas(id), ADD COLUMN estado boolean NOT NULL DEFAULT true;
+    UPDATE usuarios SET persona_id = id;
+    ALTER TABLE usuarios ALTER COLUMN persona_id SET NOT NULL;
+    INSERT INTO usuario_roles (usuario_id, rol_id) SELECT u.id, r.id FROM usuarios u JOIN roles r ON r.nombre = u.rol;
+    ALTER TABLE usuarios DROP COLUMN rol, DROP COLUMN nombre;
+  END IF;
+END $$;
+
+-- Vista de lectura: lo que el resto del servicio necesita de una cuenta (nombre completo y rol vigente)
+-- shortcut: la app usa un solo rol activo (el más reciente); si se habilitan varios a la vez, el JWT debe llevar la lista
+CREATE OR REPLACE VIEW cuentas AS
+  SELECT u.id, u.correo, u.hash, u.intentos_fallidos, u.bloqueado_hasta, u.creado_en, u.estado,
+         concat_ws(' ', p.nombres, p.apellidos) AS nombre,
+         (SELECT r.nombre FROM usuario_roles ur JOIN roles r ON r.id = ur.rol_id
+           WHERE ur.usuario_id = u.id AND ur.estado AND r.estado ORDER BY ur.asignado_en DESC LIMIT 1) AS rol
+    FROM usuarios u JOIN personas p ON p.id = u.persona_id;
 `);
 
-// Usuarios semilla, uno por rol (los ids fijos los usan las semillas de los demás servicios)
+// Usuarios semilla, uno por rol (los ids fijos los usan las semillas de los demás servicios; persona usa el mismo id)
 const hashSemilla = await bcrypt.hash(env('SEED_PASSWORD'), 10);
 for (const [id, nombre, correo, rol] of [
   ['00000000-0000-4000-8000-000000000001', 'Administración', 'admin@eventos.ec', 'ADMIN'],
@@ -39,7 +88,9 @@ for (const [id, nombre, correo, rol] of [
   ['00000000-0000-4000-8000-000000000004', 'María Fernanda Torres', 'asistente@eventos.ec', 'ASISTENTE'],
   ['00000000-0000-4000-8000-000000000005', 'Carlos Andrade', 'asistente2@eventos.ec', 'ASISTENTE'],
 ]) {
-  await db.query('INSERT INTO usuarios (id, nombre, correo, hash, rol) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING', [id, nombre, correo, hashSemilla, rol]);
+  await db.query('INSERT INTO personas (id, nombres, correo) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING', [id, nombre, correo]);
+  await db.query('INSERT INTO usuarios (id, persona_id, correo, hash) VALUES ($1, $1, $2, $3) ON CONFLICT DO NOTHING', [id, correo, hashSemilla]);
+  await db.query('INSERT INTO usuario_roles (usuario_id, rol_id) SELECT $1, id FROM roles WHERE nombre = $2 ON CONFLICT DO NOTHING', [id, rol]);
 }
 
 const sha256 = (t) => crypto.createHash('sha256').update(t).digest('hex');
@@ -86,10 +137,12 @@ app.post('/register', {
   const { nombre, password, rol } = req.body;
   const hash = await bcrypt.hash(password, 10);
   const u = await tx(db, async (c) => {
-    const { rows } = await c.query('INSERT INTO usuarios (nombre, correo, hash, rol) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING RETURNING id, nombre, correo, rol', [nombre, req.body.correo, hash, rol]);
-    if (!rows[0]) throw error(409, 'Ya existe una cuenta con ese correo');
+    const { rows: [p] } = await c.query('INSERT INTO personas (nombres, correo) VALUES ($1, $2) RETURNING id', [nombre, req.body.correo]);
+    const { rows } = await c.query('INSERT INTO usuarios (persona_id, correo, hash) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING RETURNING id, correo', [p.id, req.body.correo, hash]);
+    if (!rows[0]) throw error(409, 'Ya existe una cuenta con ese correo'); // el ROLLBACK descarta también la persona
+    await c.query('INSERT INTO usuario_roles (usuario_id, rol_id) SELECT $1, id FROM roles WHERE nombre = $2', [rows[0].id, rol]);
     await encolar(c, 'usuario.registrado', { usuarioId: rows[0].id, nombre, correo: req.body.correo });
-    return rows[0];
+    return { ...rows[0], nombre, rol };
   });
   reply.code(201);
   return abrirSesion(reply, u);
@@ -98,9 +151,9 @@ app.post('/register', {
 app.post('/login', {
   schema: { body: { type: 'object', required: ['correo', 'password'], properties: { correo, password: { type: 'string', minLength: 1, maxLength: 200 } } } },
 }, async (req, reply) => {
-  const { rows: [u] } = await db.query('SELECT * FROM usuarios WHERE lower(correo) = lower($1)', [req.body.correo]);
+  const { rows: [u] } = await db.query('SELECT * FROM cuentas WHERE lower(correo) = lower($1)', [req.body.correo]);
   if (u?.bloqueado_hasta > new Date()) throw error(423, `Cuenta bloqueada por intentos fallidos. Intenta de nuevo después de las ${hora(u.bloqueado_hasta)}.`);
-  if (!u) {
+  if (!u || !u.estado || !u.rol) { // cuenta inexistente, desactivada o sin rol vigente: misma respuesta
     await bcrypt.compare(req.body.password, hashSemilla); // mismo tiempo de respuesta exista o no la cuenta
     throw error(401, 'Correo o contraseña incorrectos.');
   }
@@ -121,7 +174,7 @@ app.post('/login', {
 app.post('/refresh', async (req, reply) => {
   const token = req.cookies.rt;
   if (!token) throw error(401, 'Sin sesión');
-  const { rows: [s] } = await db.query('SELECT s.*, u.nombre, u.correo, u.rol FROM sesiones s JOIN usuarios u ON u.id = s.usuario_id WHERE s.hash_token = $1', [sha256(token)]);
+  const { rows: [s] } = await db.query('SELECT s.*, u.nombre, u.correo, u.rol FROM sesiones s JOIN cuentas u ON u.id = s.usuario_id WHERE s.hash_token = $1 AND u.estado AND u.rol IS NOT NULL', [sha256(token)]);
   if (!s || s.expira_en < new Date()) throw error(401, 'Sesión vencida');
   if (s.revocada) {
     // Un token de renovación ya usado volvió a aparecer: posible robo, se cierran todas las sesiones
@@ -143,17 +196,84 @@ app.get('/me', { preHandler: requiere() }, async (req) => req.usuario);
 
 // Pantalla 7 · CU18 · RF03: lista de cuentas para el administrador
 app.get('/users', { preHandler: requiere('ADMIN') }, async () =>
-  (await db.query('SELECT id, nombre, correo, rol, bloqueado_hasta > now() AS bloqueado, creado_en FROM usuarios ORDER BY creado_en DESC LIMIT 500')).rows);
+  (await db.query('SELECT id, nombre, correo, rol, bloqueado_hasta > now() AS bloqueado, creado_en FROM cuentas ORDER BY creado_en DESC LIMIT 500')).rows);
 
 app.patch('/users/:id/role', {
   preHandler: requiere('ADMIN'),
   schema: { ...conId, body: { type: 'object', required: ['rol'], properties: { rol: { type: 'string', enum: ROLES }, motivo: { type: 'string', maxLength: 300 } } } },
 }, async (req) => {
   if (req.params.id === req.usuario.id) throw error(400, 'No puedes cambiar tu propio rol');
-  const { rows: [u] } = await db.query('UPDATE usuarios SET rol = $2 WHERE id = $1 RETURNING id, nombre, rol', [req.params.id, req.body.rol]);
-  if (!u) throw error(404, 'Usuario no encontrado');
+  // Reemplaza el rol: revoca los demás y asigna el nuevo, respetando UNIQUE (usuario_id, rol_id)
+  const u = await tx(db, async (c) => {
+    const { rows: [existe] } = await c.query('SELECT 1 FROM usuarios WHERE id = $1 FOR UPDATE', [req.params.id]);
+    if (!existe) throw error(404, 'Usuario no encontrado');
+    await c.query('DELETE FROM usuario_roles WHERE usuario_id = $1 AND rol_id <> (SELECT id FROM roles WHERE nombre = $2)', [req.params.id, req.body.rol]);
+    await c.query('INSERT INTO usuario_roles (usuario_id, rol_id) SELECT $1, id FROM roles WHERE nombre = $2 ON CONFLICT (usuario_id, rol_id) DO UPDATE SET estado = true', [req.params.id, req.body.rol]);
+    return (await c.query('SELECT id, nombre, rol FROM cuentas WHERE id = $1', [req.params.id])).rows[0];
+  });
   req.log.info({ accion: 'cambio_rol', adminId: req.usuario.id, usuarioId: u.id, rol: u.rol, motivo: req.body.motivo }, 'acción crítica'); // RN10
   return u;
+});
+
+// ---------- CRUD de personas (Laboratorio 01 · RF03): datos personales, independientes de la cuenta ----------
+const camposPersona = {
+  nombres: { type: 'string', minLength: 2, maxLength: 100 },
+  apellidos: { type: 'string', maxLength: 100 },
+  identificacion: { type: 'string', pattern: '^[0-9A-Za-z-]{5,20}$' },
+  correo: { ...correo, maxLength: 150 },
+  telefono: { type: 'string', pattern: '^[0-9+ ]{7,20}$' },
+  estado: { type: 'boolean' },
+};
+const COLUMNAS_PERSONA = 'id, nombres, apellidos, identificacion, correo, telefono, estado, creado_en';
+
+// Violaciones de restricciones de PostgreSQL -> 409 con mensaje claro (en vez de 500)
+const conflicto = (e) => {
+  if (e.code === '23505') throw error(409, 'Ya existe una persona con esa identificación');
+  if (e.code === '23503') throw error(409, 'La persona tiene una cuenta de usuario asociada; desactívala en lugar de eliminarla');
+  throw e;
+};
+
+app.post('/personas', {
+  preHandler: requiere('ADMIN'),
+  schema: { body: { type: 'object', required: ['nombres', 'correo'], additionalProperties: false, properties: camposPersona } },
+}, async (req, reply) => {
+  const { nombres, apellidos, identificacion, correo: c, telefono, estado = true } = req.body;
+  const { rows: [p] } = await db.query(
+    `INSERT INTO personas (nombres, apellidos, identificacion, correo, telefono, estado) VALUES ($1, $2, $3, $4, $5, $6) RETURNING ${COLUMNAS_PERSONA}`,
+    [nombres, apellidos, identificacion, c, telefono, estado]).catch(conflicto);
+  reply.code(201);
+  return p;
+});
+
+app.get('/personas', { preHandler: requiere('ADMIN') }, async () =>
+  (await db.query(`SELECT ${COLUMNAS_PERSONA} FROM personas ORDER BY creado_en DESC LIMIT 500`)).rows);
+
+app.get('/personas/:id', { preHandler: requiere('ADMIN'), schema: conId }, async (req) => {
+  const { rows: [p] } = await db.query(`SELECT ${COLUMNAS_PERSONA} FROM personas WHERE id = $1`, [req.params.id]);
+  if (!p) throw error(404, 'Persona no encontrada');
+  return p;
+});
+
+app.patch('/personas/:id', {
+  preHandler: requiere('ADMIN'),
+  schema: { ...conId, body: { type: 'object', minProperties: 1, additionalProperties: false, properties: camposPersona } },
+}, async (req) => {
+  const { nombres, apellidos, identificacion, correo: c, telefono, estado } = req.body;
+  // COALESCE: solo cambian los campos enviados; sin SQL dinámico
+  const { rows: [p] } = await db.query(
+    `UPDATE personas SET nombres = COALESCE($2, nombres), apellidos = COALESCE($3, apellidos), identificacion = COALESCE($4, identificacion),
+            correo = COALESCE($5, correo), telefono = COALESCE($6, telefono), estado = COALESCE($7, estado)
+      WHERE id = $1 RETURNING ${COLUMNAS_PERSONA}`,
+    [req.params.id, nombres, apellidos, identificacion, c, telefono, estado]).catch(conflicto);
+  if (!p) throw error(404, 'Persona no encontrada');
+  return p;
+});
+
+app.delete('/personas/:id', { preHandler: requiere('ADMIN'), schema: conId }, async (req, reply) => {
+  const { rowCount } = await db.query('DELETE FROM personas WHERE id = $1', [req.params.id]).catch(conflicto);
+  if (!rowCount) throw error(404, 'Persona no encontrada');
+  req.log.info({ accion: 'eliminar_persona', adminId: req.usuario.id, personaId: req.params.id }, 'acción crítica'); // RN10
+  reply.code(204);
 });
 
 await iniciar(app, bus.cerrar);

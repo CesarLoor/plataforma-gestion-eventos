@@ -82,6 +82,20 @@ comprobar(Array.isArray(cuentas) && cuentas.some((u) => u.correo === 'acceso@eve
 const yo = cuentas.find((u) => u.correo === 'admin@eventos.ec');
 comprobar((await http('PATCH', `${URL.auth}/users/${yo.id}/role`, { token: admin, body: { rol: 'ASISTENTE', motivo: 'prueba' } })).status === 400, 'RF03: el administrador no puede cambiar su propio rol (400)');
 
+// Laboratorio 01: CRUD de personas (separadas de la cuenta de usuario)
+const ident = `PRUEBA-${Date.now()}`;
+const nueva = await http('POST', `${URL.auth}/personas`, { token: admin, body: { nombres: 'Ana', apellidos: 'Perez', identificacion: ident, correo: 'ana.prueba@example.com', telefono: '0991234567' } });
+comprobar(nueva.status === 201 && nueva.datos.estado === true, 'Lab01: POST /personas crea la persona (201)');
+comprobar((await http('POST', `${URL.auth}/personas`, { token: admin, body: { nombres: 'Otra', identificacion: ident, correo: 'otra@example.com' } })).status === 409, 'Lab01: identificación duplicada -> 409');
+comprobar((await http('POST', `${URL.auth}/personas`, { token: admin, body: { nombres: 'Carlos', correo: 'correo-invalido' } })).status === 400, 'Lab01: correo inválido -> 400');
+comprobar((await http('GET', `${URL.auth}/personas`, { token: org })).status === 403, 'Lab01: solo el administrador gestiona personas (403)');
+comprobar((await http('GET', `${URL.auth}/personas`, { token: admin })).datos.some((p) => p.identificacion === ident), 'Lab01: GET /personas lista la persona');
+const editada = await http('PATCH', `${URL.auth}/personas/${nueva.datos.id}`, { token: admin, body: { telefono: '0987654321' } });
+comprobar(editada.datos.telefono === '0987654321' && editada.datos.nombres === 'Ana', 'Lab01: PATCH cambia solo el teléfono');
+comprobar((await http('DELETE', `${URL.auth}/personas/${yo.id}`, { token: admin })).status === 409, 'Lab01: no se elimina una persona con cuenta (409)');
+comprobar((await http('DELETE', `${URL.auth}/personas/${nueva.datos.id}`, { token: admin })).status === 204, 'Lab01: DELETE elimina la persona (204)');
+comprobar((await http('GET', `${URL.auth}/personas/${nueva.datos.id}`, { token: admin })).status === 404, 'Lab01: persona eliminada -> 404');
+
 // Seguridad de acceso
 comprobar((await http('GET', `${URL.inventory}/internal/reservations/${reserva.datos.id}`)).status === 403, 'V6: ruta interna sin token de servicio -> 403');
 comprobar((await http('GET', `${URL.tickets}/me/tickets`, { token: `${ana.slice(0, -4)}AAAA` })).status === 401, 'V2: token alterado -> 401');
